@@ -150,6 +150,7 @@ declare_passes! {
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
     mod impossible_predicates : ImpossiblePredicates;
+    mod integer_range : IntegerRange;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -744,6 +745,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::AfterGVN,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
+            &integer_range::IntegerRange,
             &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
