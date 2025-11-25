@@ -1,0 +1,60 @@
+- // MIR for `test` before IntegerRange
++ // MIR for `test` after IntegerRange
+  
+  fn test(_1: bool) -> &str {
+      debug x => _1;
+      let mut _0: &str;
+      let mut _2: u8;
+      let mut _3: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = move _3 as u8 (IntToInt);
+          StorageDead(_3);
+          switchInt(copy _2) -> [0: bb4, 1: bb3, 2: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const "unknown";
+          goto -> bb5;
+      }
+  
+      bb2: {
+          _0 = const "two";
+          goto -> bb5;
+      }
+  
+      bb3: {
+          _0 = const "one";
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _0 = const "null";
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 7, align: 1) {
+      75 6e 6b 6e 6f 77 6e                            │ unknown
+  }
+  
+  ALLOC1 (size: 3, align: 1) {
+      74 77 6f                                        │ two
+  }
+  
+  ALLOC2 (size: 3, align: 1) {
+      6f 6e 65                                        │ one
+  }
+  
+  ALLOC3 (size: 4, align: 1) {
+      6e 75 6c 6c                                     │ null
+  }
+  

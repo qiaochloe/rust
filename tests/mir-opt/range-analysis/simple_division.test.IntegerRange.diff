@@ -1,0 +1,41 @@
+- // MIR for `test` before IntegerRange
++ // MIR for `test` after IntegerRange
+  
+  fn test(_1: u8) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: u8;
+      let mut _3: u8;
+      let mut _4: bool;
+      let mut _6: u8;
+      scope 1 {
+          debug b => _2;
+          let _5: bool;
+          scope 2 {
+              debug cond => _5;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _4 = Eq(const 2_u8, const 0_u8);
+          assert(!move _4, "attempt to divide `{}` by zero", copy _3) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _2 = Div(move _3, const 2_u8);
+          StorageDead(_3);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = copy _2;
+          _5 = Lt(move _6, const 128_u8);
+          StorageDead(_6);
+          _0 = const ();
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
