@@ -5,13 +5,20 @@
 // overflow check elimination, static branch prediction
 // TODO: remove Integer from the name
 
-#![allow(dead_code, unused_imports, unused_variables, unreachable_code, unused_mut, unreachable_pub)] // TODO: remove
+// TODO: remove
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    unreachable_code,
+    unused_mut,
+    unreachable_pub
+)]
 
 use std::assert_matches::assert_matches;
 use std::cell::RefCell;
 use std::fmt::Formatter;
 
-use rustc_mir_dataflow::JoinSemiLattice;
 use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
 use rustc_const_eval::interpret::{
@@ -23,15 +30,17 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt, ScalarInt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom, HasTop};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
+use rustc_mir_dataflow::{Analysis, JoinSemiLattice, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
+
+use crate::patch::MirPatch;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
@@ -53,7 +62,6 @@ impl Range {
         let lo = if self.lo.to_u8() <= other.lo.to_u8() { self.lo } else { other.lo };
         let hi = if self.hi.to_u8() >= other.hi.to_u8() { self.hi } else { other.hi };
         Range { lo, hi }
-
     }
 
     pub fn intersect(self, other: Self) -> Option<Self> {
@@ -131,20 +139,28 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
         let place_limit = None;
         let map = Map::new(tcx, body, place_limit);
 
-        let const_ = debug_span!("analyze").in_scope(|| IntegerRangeAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
+        let results = debug_span!("analyze").in_scope(|| {
+            IntegerRangeAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None)
+        });
 
         // let mut map = const_.analysis.map;
         // dbg!(&map);
 
-        let mut states = const_.entry_states;
-        dbg!(&states);
+        //let mut states = const_.entry_states;
+        //dbg!(&states);
 
-        // let mut visitor = Collector { patch: Patch { tcx } };
-        // debug_span!("collect").in_scope(|| {
-        //     visit_reachable_results(body, &const_, &mut visitor);
-        // });
-        // let mut patch = visitor.patch;
-        // debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
+        // Perform dead code elimination based on range analysis
+        let patch = {
+            let mut visitor = Collector::new(tcx, body, &results);
+            debug_span!("collect").in_scope(|| {
+                visit_reachable_results(body, &results, &mut visitor);
+            });
+            visitor.patch
+        };
+
+        debug_span!("patch").in_scope(|| {
+            patch.apply(body);
+        });
     }
 
     // fn is_mir_dump_enabled(&self) -> bool {
@@ -155,11 +171,12 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
     /// For passes which are strictly optimizations, this should return `false`.
     /// If this is `false`, `#[optimize(none)]` will disable the pass.
     fn is_required(&self) -> bool {
-        false
+        // TODO: change later
+        true
     }
 }
 
-struct IntegerRangeAnalysis<'a, 'tcx>{
+struct IntegerRangeAnalysis<'a, 'tcx> {
     map: Map<'tcx>,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
@@ -218,7 +235,6 @@ impl<'tcx> Analysis<'tcx> for IntegerRangeAnalysis<'_, 'tcx> {
             self.handle_call_return(return_places, state)
         }
     }
-
 }
 
 impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
@@ -241,11 +257,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 // StorageLive leaves the local in an uninitialized state
                 // StorageDead makes it UB to access the local afterwards
-                state.flood_with(
-                    Place::from(*local).as_ref(),
-                    &self.map,
-                    RangeLattice::BOTTOM,
-                );
+                state.flood_with(Place::from(*local).as_ref(), &self.map, RangeLattice::BOTTOM);
             }
             StatementKind::Retag(..) => {
                 // We don't track references.
@@ -305,12 +317,11 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                 _,
             ) => {
                 // todo!()
-                }
+            }
             _ => {
                 let result = self.handle_rvalue(rvalue, state);
                 state.assign(target.as_ref(), result, &self.map);
             }
-
         }
     }
 
@@ -327,7 +338,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
 
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand_, ty_) => {
                 RangeLattice::Top
-            },
+            }
 
             Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, ty) => {
                 // TODO: need to handle wrap_immediate
@@ -353,7 +364,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
             Rvalue::Discriminant(place) => {
                 RangeLattice::Top
                 // state.get_discr(place.as_ref(), &self.map)
-            },
+            }
 
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
 
@@ -373,7 +384,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
             | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
-            },
+            }
         };
         ValueOrPlace::Value(val)
     }
@@ -390,10 +401,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
             Operand::Copy(place) | Operand::Move(place) => {
                 // On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
-                self.map
-                    .find(place.as_ref())
-                    .map(ValueOrPlace::Place)
-                    .unwrap_or(ValueOrPlace::TOP)
+                self.map.find(place.as_ref()).map(ValueOrPlace::Place).unwrap_or(ValueOrPlace::TOP)
             }
         }
     }
@@ -471,7 +479,9 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         let llat = self.eval_operand(left, state);
         let rlat = self.eval_operand(right, state);
         match (llat, rlat) {
-            (RangeLattice::Bottom, _) | (_, RangeLattice::Bottom) => (RangeLattice::Bottom, RangeLattice::Bottom),
+            (RangeLattice::Bottom, _) | (_, RangeLattice::Bottom) => {
+                (RangeLattice::Bottom, RangeLattice::Bottom)
+            }
 
             // Both sides are known, do the actual computation.
             (RangeLattice::Range(l), RangeLattice::Range(r)) => {
@@ -493,7 +503,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                     Eq | Ne | Lt | Le | Gt | Ge => {
                         self.bool_interval_from_compare(op, l, r, size, is_signed)
                     }
-                    _ => return (RangeLattice::Top, RangeLattice::Top)
+                    _ => return (RangeLattice::Top, RangeLattice::Top),
                 };
 
                 (res, res)
@@ -539,9 +549,9 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         size: Size,
         is_signed: bool,
     ) -> RangeLattice {
-
         // TODO: should we use std in the compiler?
-        use std::cmp::{min, max};
+        use std::cmp::{max, min};
+
         use BinOp::*;
 
         // TODO: is this conversion from u128 to i128 safe? What if there is overflow
@@ -550,11 +560,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         };
 
         let from_i = |v: i128| -> ScalarInt {
-            if is_signed {
-                ScalarInt::from(v)
-            } else {
-                ScalarInt::from(v as u128)
-            }
+            if is_signed { ScalarInt::from(v) } else { ScalarInt::from(v as u128) }
         };
 
         let ll = to_i(l.lo);
@@ -579,76 +585,69 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         RangeLattice::Range(Range::new(res_lo, res_hi))
     }
 
-fn bitwise_interval(
-    &self,
-    op: BinOp,
-    l: Range,
-    r: Range,
-    size: Size,
-) -> RangeLattice {
-    use std::cmp::{min, max};
-    use BinOp::*;
+    fn bitwise_interval(&self, op: BinOp, l: Range, r: Range, size: Size) -> RangeLattice {
+        use std::cmp::{max, min};
 
-    // TODO: only implemented for unsigned ints
+        use BinOp::*;
 
-    let to_u = |s: ScalarInt| -> u128 {
-        s.to_uint(size)
-    };
+        // TODO: only implemented for unsigned ints
 
-    let from_u = |v: u128| -> ScalarInt {
-        let truncated = size.truncate(v);
-        ScalarInt::try_from_uint(truncated, size).unwrap()
-    };
+        let to_u = |s: ScalarInt| -> u128 { s.to_uint(size) };
 
-    match op {
-        BitAnd => {
-            if l.lo == l.hi && r.lo == r.hi {
-                let res = from_u(to_u(l.lo) & to_u(r.lo));
-                return RangeLattice::Range(Range::singleton(res));
+        let from_u = |v: u128| -> ScalarInt {
+            let truncated = size.truncate(v);
+            ScalarInt::try_from_uint(truncated, size).unwrap()
+        };
+
+        match op {
+            BitAnd => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    let res = from_u(to_u(l.lo) & to_u(r.lo));
+                    return RangeLattice::Range(Range::singleton(res));
+                }
+
+                // 0 <= (a & b) <= min(a, b)
+                let l_hi = to_u(l.hi);
+                let r_hi = to_u(r.hi);
+                let hi = from_u(l_hi.min(r_hi));
+                let lo = from_u(0);
+
+                RangeLattice::Range(Range::new(lo, hi))
             }
 
-            // 0 <= (a & b) <= min(a, b)
-            let l_hi = to_u(l.hi);
-            let r_hi = to_u(r.hi);
-            let hi = from_u(l_hi.min(r_hi));
-            let lo = from_u(0);
+            BitOr => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    let res = from_u(to_u(l.lo) | to_u(r.lo));
+                    return RangeLattice::Range(Range::singleton(res));
+                }
 
-            RangeLattice::Range(Range::new(lo, hi))
-        }
+                // min >= max(lo_l, lo_r)
+                // max <= hi_l | hi_r.
+                let l_lo = to_u(l.lo);
+                let r_lo = to_u(r.lo);
+                let l_hi = to_u(l.hi);
+                let r_hi = to_u(r.hi);
 
-        BitOr => {
-            if l.lo == l.hi && r.lo == r.hi {
-                let res = from_u(to_u(l.lo) | to_u(r.lo));
-                return RangeLattice::Range(Range::singleton(res));
+                let lo = from_u(l_lo.max(r_lo));
+                let hi = from_u(l_hi | r_hi);
+
+                RangeLattice::Range(Range::new(lo, hi))
             }
 
-            // min >= max(lo_l, lo_r)
-            // max <= hi_l | hi_r.
-            let l_lo = to_u(l.lo);
-            let r_lo = to_u(r.lo);
-            let l_hi = to_u(l.hi);
-            let r_hi = to_u(r.hi);
+            BitXor => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    let res = from_u(to_u(l.lo) ^ to_u(r.lo));
+                    return RangeLattice::Range(Range::singleton(res));
+                }
 
-            let lo = from_u(l_lo.max(r_lo));
-            let hi = from_u(l_hi | r_hi);
-
-            RangeLattice::Range(Range::new(lo, hi))
-        }
-
-        BitXor => {
-            if l.lo == l.hi && r.lo == r.hi {
-                let res = from_u(to_u(l.lo) ^ to_u(r.lo));
-                return RangeLattice::Range(Range::singleton(res));
+                let mask = size.truncate(u128::MAX);
+                let lo = from_u(0);
+                let hi = from_u(mask);
+                RangeLattice::Range(Range::new(lo, hi))
             }
-
-            let mask = size.truncate(u128::MAX);
-            let lo = from_u(0);
-            let hi = from_u(mask);
-            RangeLattice::Range(Range::new(lo, hi))
+            _ => unreachable!(),
         }
-        _ => unreachable!(),
     }
-}
 
     fn shift_interval(
         &self,
@@ -672,11 +671,7 @@ fn bitwise_interval(
         use BinOp::*;
 
         let to_i = |s: ScalarInt| -> i128 {
-            if is_signed {
-                s.to_int(size)
-            } else {
-                s.to_uint(size) as i128
-            }
+            if is_signed { s.to_int(size) } else { s.to_uint(size) as i128 }
         };
 
         let ll = to_i(l.lo);
@@ -684,7 +679,9 @@ fn bitwise_interval(
         let rl = to_i(r.lo);
         let rh = to_i(r.hi);
 
-        let make_bool_range = |always_true: bool, always_false: bool, this: &IntegerRangeAnalysis<'_, '_>| {
+        let make_bool_range = |always_true: bool,
+                               always_false: bool,
+                               this: &IntegerRangeAnalysis<'_, '_>| {
             // Get the layout of `bool` to size the ScalarInt correctly.
             let layout = this
                 .tcx
@@ -693,8 +690,7 @@ fn bitwise_interval(
             let size = layout.size;
 
             let mk_scalar = |v: u128| {
-                ScalarInt::try_from_uint(size.truncate(v), size)
-                    .expect("bool scalar should fit")
+                ScalarInt::try_from_uint(size.truncate(v), size).expect("bool scalar should fit")
             };
 
             let zero = mk_scalar(0);
@@ -818,11 +814,7 @@ fn bitwise_interval(
         todo!();
     }
 
-    fn eval_operand(
-        &self,
-        op: &Operand<'tcx>,
-        state: &mut State<RangeLattice>,
-    ) -> RangeLattice {
+    fn eval_operand(&self, op: &Operand<'tcx>, state: &mut State<RangeLattice>) -> RangeLattice {
         // WARNING: might need to handle more values
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
@@ -855,7 +847,11 @@ fn bitwise_interval(
 
 /// This is used to visualize the dataflow analysis.
 impl<'tcx> DebugWithContext<IntegerRangeAnalysis<'_, 'tcx>> for State<RangeLattice> {
-    fn fmt_with(&self, ctxt: &IntegerRangeAnalysis<'_, 'tcx>, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt_with(
+        &self,
+        ctxt: &IntegerRangeAnalysis<'_, 'tcx>,
+        f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
         match self {
             State::Reachable(values) => debug_with_context(values, None, &ctxt.map, f),
             State::Unreachable => write!(f, "unreachable"),
@@ -877,30 +873,141 @@ impl<'tcx> DebugWithContext<IntegerRangeAnalysis<'_, 'tcx>> for State<RangeLatti
     }
 }
 
-struct Patch<'tcx> {
-    tcx: TyCtxt<'tcx>,
+/// Helper methods for dead code elimination
+impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
+    /// Evaluates a boolean operand.
+    /// Returns Some(true) if always true, Some(false) if always false, None if unknown.
+    fn eval_bool(
+        &self,
+        operand: &Operand<'tcx>,
+        state: &State<RangeLattice>,
+    ) -> Option<bool> {
+        if !state.is_reachable() {
+            return None;
+        }
 
-    /// For a given MIR location, this stores the values of the operands used by that location. In
-    /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
-    /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    before_effect: FxHashMap<(Location, Place<'tcx>), Const<'tcx>>,
+        let ty = operand.ty(self.local_decls, self.tcx);
+        if !ty.is_bool() {
+            return None;
+        }
 
-    /// Stores the assigned values for assignments where the Rvalue is constant.
-    assignments: FxHashMap<Location, Const<'tcx>>,
-}
+        let mut state_mut = state.clone();
+        let value = self.eval_operand(operand, &mut state_mut);
+        match value {
+            RangeLattice::Bottom => None,
+            RangeLattice::Top => None,
+            RangeLattice::Range(Range { lo, hi }) => {
+                let lo_bits = lo.to_bits_unchecked();
+                let hi_bits = hi.to_bits_unchecked();
+                assert!(lo_bits == 0 || lo_bits == 1);
+                assert!(hi_bits == 0 || hi_bits == 1);
 
-
-// TODO:
-impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+                if lo == hi {
+                    if lo_bits == 0 {
+                        return Some(false);
+                    } else if lo_bits == 1 {
+                        return Some(true);
+                    }
+                }
+                None
+            }
+        }
     }
 }
 
-struct Collector<'tcx> {
-    patch: Patch<'tcx>,
+struct Collector<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    analysis: &'a IntegerRangeAnalysis<'a, 'tcx>,
+    patch: MirPatch<'tcx>,
 }
 
-// TODO:
-impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collector<'tcx> {
+impl<'a, 'tcx> Collector<'a, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &'a Body<'tcx>,
+        results: &'a rustc_mir_dataflow::Results<'tcx, IntegerRangeAnalysis<'a, 'tcx>>,
+    ) -> Self {
+        Self { tcx, body, analysis: &results.analysis, patch: MirPatch::new(body) }
+    }
+}
+
+impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>>
+    for Collector<'a, 'tcx>
+{
+    fn visit_after_primary_terminator_effect(
+        &mut self,
+        _analysis: &IntegerRangeAnalysis<'a, 'tcx>,
+        state: &State<RangeLattice>,
+        terminator: &Terminator<'tcx>,
+        location: Location,
+    ) {
+        match &terminator.kind {
+            TerminatorKind::Assert { cond, expected, target, unwind, msg } => {
+                // Try to evaluate the condition using range analysis
+                let cond_value = self.analysis.eval_bool(cond, state);
+
+                if let Some(always_true) = cond_value {
+                    // Assert always succeeds, replace with goto
+                    if always_true == *expected {
+                        self.patch.patch_terminator(
+                            location.block,
+                            TerminatorKind::Goto { target: *target },
+                        );
+                    } else {
+                        // Assert always fails, replace with unreachable
+                        self.patch.patch_terminator(location.block, TerminatorKind::Unreachable);
+                    }
+                }
+            }
+
+            TerminatorKind::SwitchInt { discr, targets } => {
+                // First, check if we can evaluate the discriminant to a singleton range
+                let mut state_mut = state.clone();
+                let value = self.analysis.eval_operand(discr, &mut state_mut);
+
+                if let RangeLattice::Range(Range { lo, hi }) = value {
+                    // Handle singleton range
+                    if lo == hi {
+                        let bits = lo.to_bits_unchecked();
+                        let target = targets.target_for_value(bits);
+                        self.patch.patch_terminator(location.block, TerminatorKind::Goto { target });
+                        return;
+                    }
+
+                    let lo_bits = lo.to_bits_unchecked();
+                    let hi_bits = hi.to_bits_unchecked();
+
+                    let filtered: Vec<_> = targets
+                        .iter()
+                        .filter(|(value, _)| *value >= lo_bits && *value <= hi_bits)
+                        .collect();
+
+                    let original_count = targets.iter().count();
+                    let num_explicit_targets = filtered.len();
+
+                    // If only one target is possible, simplify to goto
+                    if num_explicit_targets == 0 {
+                        let otherwise = targets.otherwise();
+                        self.patch.patch_terminator(
+                            location.block,
+                            TerminatorKind::Goto { target: otherwise },
+                        );
+                    } else if num_explicit_targets < original_count {
+                        // Multiple targets, but some were filtered
+                        let otherwise = targets.otherwise();
+                        let filtered_targets = SwitchTargets::new(filtered.into_iter(), otherwise);
+                        self.patch.patch_terminator(
+                            location.block,
+                            TerminatorKind::SwitchInt {
+                                discr: discr.clone(),
+                                targets: filtered_targets,
+                            },
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
