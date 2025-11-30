@@ -1,8 +1,7 @@
 //! Range analysis finds lower and upper bounds to the values that variables can assume. Currently
 //! only operates on integer types.
 
-// TODO: dead code elimination, array bounds checking elimination
-// overflow check elimination, static branch prediction
+// NOTE: can implement array bounds checking elimination, overflow check elimination, static branch prediction
 // TODO: remove Integer from the name
 
 // TODO: remove
@@ -150,18 +149,9 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
         sess.mir_opt_level() >= 4
     }
 
-    // fn name(&self) -> &'static str {
-    //     const { simplify_pass_type_name(std::any::type_name::<Self>()) }
-    // }
-
-    // fn profiler_name(&self) -> &'static str {
-    //     to_profiler_name(self.name())
-    // }
-
-    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
-    /// true for basically every pass other than those that are necessary for correctness.
+    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`
     fn can_be_overridden(&self) -> bool {
-        // TODO:
+        // TODO: change later
         false
     }
 
@@ -193,12 +183,6 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
         });
     }
 
-    // fn is_mir_dump_enabled(&self) -> bool {
-    //     true
-    // }
-
-    /// Returns `true` if this pass must be run (i.e. it is required for soundness).
-    /// For passes which are strictly optimizations, this should return `false`.
     /// If this is `false`, `#[optimize(none)]` will disable the pass.
     fn is_required(&self) -> bool {
         // TODO: change later
@@ -452,10 +436,8 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
-            TerminatorKind::SwitchInt { discr, targets } => {
-                return self.handle_switch_int(discr, targets, state);
-            }
-            TerminatorKind::TailCall { .. }
+            TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
@@ -510,10 +492,6 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         let llat = self.eval_operand(left, state);
         let rlat = self.eval_operand(right, state);
         match (llat, rlat) {
-            (RangeLattice::Bottom, _) | (_, RangeLattice::Bottom) => {
-                (RangeLattice::Bottom, RangeLattice::Bottom)
-            }
-
             // Both sides are known, do the actual computation.
             (RangeLattice::Range(l), RangeLattice::Range(r)) => {
                 let ty = left.ty(self.local_decls, self.tcx);
@@ -528,47 +506,24 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
 
                 use BinOp::*;
                 let res = match op {
+                    // TODO: handle division
                     Add | Sub | Mul => self.arith_interval(op, l, r, size, signed),
                     BitAnd | BitOr | BitXor => self.bitwise_interval(op, l, r, size),
+                    // TODO: handle ShrUnchecked, ShlUnchecked
                     Shl | Shr => self.shift_interval(op, l, r, size, signed),
-                    Eq | Ne | Lt | Le | Gt | Ge => {
-                        self.bool_interval_from_compare(op, l, r, size, signed)
-                    }
+                    Eq | Ne | Lt | Le | Gt | Ge => self.bool_interval(op, l, r, size, signed),
                     _ => return (RangeLattice::Top, RangeLattice::Top),
                 };
 
                 (res, res)
             }
-
-            // Exactly one side is known, attempt some algebraic simplifications.
-            (RangeLattice::Range(const_arg), _) | (_, RangeLattice::Range(const_arg)) => {
-                // TODO:
-                return (RangeLattice::Top, RangeLattice::Top);
-                // let layout = const_arg.layout;
-                // if !matches!(layout.backend_repr, rustc_abi::BackendRepr::Scalar(..)) {
-                //     return (RangeLattice::Top, RangeLattice::Top);
-                // }
-                //
-                // let arg_scalar = const_arg.to_scalar();
-                // let Some(arg_value) = arg_scalar.to_bits(layout.size).discard_err() else {
-                //     return (RangeLattice::Top, RangeLattice::Top);
-                // };
-                //
-                // match op {
-                //     BinOp::BitAnd if arg_value == 0 => (RangeLattice::Range(arg_scalar), RangeLattice::Bottom),
-                //     BinOp::BitOr
-                //         if arg_value == layout.size.truncate(u128::MAX)
-                //             || (layout.ty.is_bool() && arg_value == 1) =>
-                //     {
-                //         (RangeLattice::Range(arg_scalar), RangeLattice::Bottom)
-                //     }
-                //     BinOp::Mul if layout.ty.is_integral() && arg_value == 0 => {
-                //         (RangeLattice::Range(arg_scalar), RangeLattice::Range(Scalar::from_bool(false)))
-                //     }
-                //     _ => (RangeLattice::Top, RangeLattice::Top),
-                // }
+            (RangeLattice::Bottom, _)
+            | (_, RangeLattice::Bottom)
+            | (RangeLattice::Range(_), _)
+            | (_, RangeLattice::Range(_))
+            | (RangeLattice::Top, RangeLattice::Top) => {
+                (RangeLattice::Bottom, RangeLattice::Bottom)
             }
-            (RangeLattice::Top, RangeLattice::Top) => (RangeLattice::Top, RangeLattice::Top),
         }
     }
 
@@ -580,40 +535,72 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         size: Size,
         signed: bool,
     ) -> RangeLattice {
-        // TODO: should we use std in the compiler?
         use std::cmp::{max, min};
 
         use BinOp::*;
 
-        // TODO: is this conversion from u128 to i128 safe? What if there is overflow
-        let to_i = |s: ScalarInt| -> i128 {
-            if signed { s.to_int(size) } else { s.to_uint(size) as i128 }
-        };
+        if signed {
+            let to_i = |s: ScalarInt| -> i128 { s.to_int(size) };
+            let ll = to_i(l.lo);
+            let lh = to_i(l.hi);
+            let rl = to_i(r.lo);
+            let rh = to_i(r.hi);
 
-        let from_i = |v: i128| -> ScalarInt {
-            if signed { ScalarInt::from(v) } else { ScalarInt::from(v as u128) }
-        };
+            let (min_v, max_v) = match op {
+                Add => (ll + rl, lh + rh),
+                Sub => (ll - rh, lh - rl),
+                Mul => {
+                    let candidates = [ll * rl, ll * rh, lh * rl, lh * rh];
+                    let &mn = candidates.iter().min().unwrap();
+                    let &mx = candidates.iter().max().unwrap();
+                    (mn, mx)
+                }
+                _ => unreachable!(),
+            };
 
-        let ll = to_i(l.lo);
-        let lh = to_i(l.hi);
-        let rl = to_i(r.lo);
-        let rh = to_i(r.hi);
+            RangeLattice::Range(Range::new(ScalarInt::from(min_v), ScalarInt::from(max_v), signed))
+        } else {
+            let to_u = |s: ScalarInt| -> u128 { s.to_uint(size) };
+            let unsigned_max = size.unsigned_int_max();
 
-        let (min_v, max_v) = match op {
-            Add => (ll + rl, lh + rh),
-            Sub => (ll - rh, lh - rl),
-            Mul => {
-                let candidates = [ll * rl, ll * rh, lh * rl, lh * rh];
-                let &mn = candidates.iter().min().unwrap();
-                let &mx = candidates.iter().max().unwrap();
-                (mn, mx)
-            }
-            _ => unreachable!(),
-        };
+            let ll = to_u(l.lo);
+            let lh = to_u(l.hi);
+            let rl = to_u(r.lo);
+            let rh = to_u(r.hi);
 
-        let res_lo = from_i(min_v);
-        let res_hi = from_i(max_v);
-        RangeLattice::Range(Range::new(res_lo, res_hi, signed))
+            // NOTE: saturating is nightly
+            let (min_v, max_v) = match op {
+                Add => {
+                    let min_val = ll.saturating_add(rl);
+                    let max_val = std::cmp::min(lh.saturating_add(rh), unsigned_max);
+                    (min_val, max_val)
+                }
+                Sub => {
+                    let min_val = ll.saturating_sub(rh);
+                    let max_val = std::cmp::min(lh.saturating_sub(rl), unsigned_max);
+                    (min_val, max_val)
+                }
+                Mul => {
+                    let candidates = [
+                        ll.saturating_mul(rl),
+                        ll.saturating_mul(rh),
+                        lh.saturating_mul(rl),
+                        lh.saturating_mul(rh),
+                    ];
+                    let mn = *candidates.iter().min().unwrap();
+                    let max_candidate = *candidates.iter().max().unwrap();
+                    let mx = std::cmp::min(max_candidate, unsigned_max);
+                    (mn, mx)
+                }
+                _ => unreachable!(),
+            };
+
+            let res_lo = ScalarInt::try_from_uint(min_v, size)
+                .unwrap_or_else(|| ScalarInt::try_from_uint(unsigned_max, size).unwrap());
+            let res_hi = ScalarInt::try_from_uint(max_v, size)
+                .unwrap_or_else(|| ScalarInt::try_from_uint(unsigned_max, size).unwrap());
+            RangeLattice::Range(Range::new(res_lo, res_hi, signed))
+        }
     }
 
     fn bitwise_interval(&self, op: BinOp, l: Range, r: Range, size: Size) -> RangeLattice {
@@ -621,12 +608,8 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
 
         use BinOp::*;
 
-        // TODO: only implemented for unsigned ints
-        // Bitwise operations are typically unsigned, but we preserve the signedness from input ranges
-        let signed = l.signed; // Both ranges should have same signedness
-
+        let signed = l.signed;
         let to_u = |s: ScalarInt| -> u128 { s.to_uint(size) };
-
         let from_u = |v: u128| -> ScalarInt {
             let truncated = size.truncate(v);
             ScalarInt::try_from_uint(truncated, size).unwrap()
@@ -639,13 +622,17 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                     return RangeLattice::Range(Range::singleton(res, signed));
                 }
 
-                // 0 <= (a & b) <= min(a, b)
-                let l_hi = to_u(l.hi);
-                let r_hi = to_u(r.hi);
-                let hi = from_u(l_hi.min(r_hi));
-                let lo = from_u(0);
-
-                RangeLattice::Range(Range::new(lo, hi, signed))
+                if !signed {
+                    // 0 <= (a & b) <= min(a, b)
+                    let l_hi = to_u(l.hi);
+                    let r_hi = to_u(r.hi);
+                    let hi = from_u(l_hi.min(r_hi));
+                    let lo = from_u(0);
+                    RangeLattice::Range(Range::new(lo, hi, signed))
+                } else {
+                    // TODO: might be able to optimize
+                    RangeLattice::Top
+                }
             }
 
             BitOr => {
@@ -654,17 +641,22 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                     return RangeLattice::Range(Range::singleton(res, signed));
                 }
 
-                // min >= max(lo_l, lo_r)
-                // max <= hi_l | hi_r.
-                let l_lo = to_u(l.lo);
-                let r_lo = to_u(r.lo);
-                let l_hi = to_u(l.hi);
-                let r_hi = to_u(r.hi);
+                if !signed {
+                    // min >= max(lo_l, lo_r)
+                    // max <= hi_l | hi_r.
+                    let l_lo = to_u(l.lo);
+                    let r_lo = to_u(r.lo);
+                    let l_hi = to_u(l.hi);
+                    let r_hi = to_u(r.hi);
 
-                let lo = from_u(l_lo.max(r_lo));
-                let hi = from_u(l_hi | r_hi);
+                    let lo = from_u(l_lo.max(r_lo));
+                    let hi = from_u(l_hi | r_hi);
 
-                RangeLattice::Range(Range::new(lo, hi, signed))
+                    RangeLattice::Range(Range::new(lo, hi, signed))
+                } else {
+                    // TODO: might be able to optimize
+                    RangeLattice::Top
+                }
             }
 
             BitXor => {
@@ -673,27 +665,21 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                     return RangeLattice::Range(Range::singleton(res, signed));
                 }
 
-                let mask = size.truncate(u128::MAX);
-                let lo = from_u(0);
-                let hi = from_u(mask);
-                RangeLattice::Range(Range::new(lo, hi, signed))
+                if !signed {
+                    let mask = size.truncate(u128::MAX);
+                    let lo = from_u(0);
+                    let hi = from_u(mask);
+                    RangeLattice::Range(Range::new(lo, hi, signed))
+                } else {
+                    // TODO: might be able to optimize
+                    RangeLattice::Top
+                }
             }
             _ => unreachable!(),
         }
     }
 
     fn shift_interval(
-        &self,
-        _op: BinOp,
-        _l: Range,
-        _r: Range,
-        _size: Size,
-        _signed: bool,
-    ) -> RangeLattice {
-        todo!();
-    }
-
-    fn bool_interval_from_compare(
         &self,
         op: BinOp,
         l: Range,
@@ -703,114 +689,141 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
     ) -> RangeLattice {
         use BinOp::*;
 
-        let to_i = |s: ScalarInt| -> i128 {
-            if signed { s.to_int(size) } else { s.to_uint(size) as i128 }
-        };
+        if signed {
+            // TODO: check this
+            bug!("Shift on signed integers not supported");
+        }
 
+        let to_i = |s: ScalarInt| -> i128 { s.to_int(size) };
         let ll = to_i(l.lo);
         let lh = to_i(l.hi);
         let rl = to_i(r.lo);
         let rh = to_i(r.hi);
 
-        let make_bool_range = |always_true: bool,
-                               always_false: bool,
-                               this: &IntegerRangeAnalysis<'_, '_>| {
-            // Get the layout of `bool` to size the ScalarInt correctly.
-            let layout = this
-                .tcx
-                .layout_of(this.typing_env.as_query_input(this.tcx.types.bool))
-                .expect("bool layout must exist");
-            let size = layout.size;
+        match op {
+            Shr => {
+                // TODO: check these intervals
+                RangeLattice::Range(Range::new(
+                    ScalarInt::from(ll >> rh),
+                    ScalarInt::from(lh >> rl),
+                    signed,
+                ))
+            }
+            Shl => RangeLattice::Range(Range::new(
+                ScalarInt::from(ll << rl),
+                ScalarInt::from(lh << rh),
+                signed,
+            )),
+            _ => unreachable!(),
+        }
+    }
 
-            let mk_scalar = |v: u128| {
-                ScalarInt::try_from_uint(size.truncate(v), size).expect("bool scalar should fit")
+    fn bool_interval(
+        &self,
+        op: BinOp,
+        l: Range,
+        r: Range,
+        size: Size,
+        signed: bool,
+    ) -> RangeLattice {
+        use BinOp::*;
+
+        let make_bool_range =
+            |always_true: bool, always_false: bool, _this: &IntegerRangeAnalysis<'_, '_>| {
+                let signed = false;
+                if always_true && !always_false {
+                    RangeLattice::Range(Range::singleton(ScalarInt::TRUE, signed))
+                } else if always_false && !always_true {
+                    RangeLattice::Range(Range::singleton(ScalarInt::FALSE, signed))
+                } else {
+                    RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed))
+                }
             };
 
-            let zero = mk_scalar(0);
-            let one = mk_scalar(1);
-            let signed = false;
+        // TODO: more elegan way to handle signedness?
+        let (always_true, always_false) = if signed {
+            let to_i = |s: ScalarInt| -> i128 { s.to_int(size) };
+            let ll = to_i(l.lo);
+            let lh = to_i(l.hi);
+            let rl = to_i(r.lo);
+            let rh = to_i(r.hi);
 
-            if always_true && !always_false {
-                RangeLattice::Range(Range::singleton(one, signed))
-            } else if always_false && !always_true {
-                RangeLattice::Range(Range::singleton(zero, signed))
-            } else {
-                RangeLattice::Range(Range::new(zero, one, signed))
+            match op {
+                Eq => {
+                    let disjoint = lh < rl || rh < ll;
+                    let singleton_equal = ll == lh && rl == rh && ll == rl;
+                    (singleton_equal, disjoint)
+                }
+                Ne => {
+                    let disjoint = lh < rl || rh < ll;
+                    let singleton_equal = ll == lh && rl == rh && ll == rl;
+                    (disjoint, singleton_equal)
+                }
+                Lt => {
+                    let always_true = lh < rl;
+                    let always_false = ll >= rh;
+                    (always_true, always_false)
+                }
+                Le => {
+                    let always_true = lh <= rl;
+                    let always_false = ll > rh;
+                    (always_true, always_false)
+                }
+                Gt => {
+                    let always_true = rh < ll;
+                    let always_false = rl >= lh;
+                    (always_true, always_false)
+                }
+                Ge => {
+                    let always_true = rh <= ll;
+                    let always_false = rl > lh;
+                    (always_true, always_false)
+                }
+                _ => unreachable!(),
             }
-        };
+        } else {
+            let to_u = |s: ScalarInt| -> u128 { s.to_uint(size) };
+            let ll = to_u(l.lo);
+            let lh = to_u(l.hi);
+            let rl = to_u(r.lo);
+            let rh = to_u(r.hi);
 
-        let (always_true, always_false) = match op {
-            Eq => {
-                let disjoint = lh < rl || rh < ll;
-                let singleton_equal = ll == lh && rl == rh && ll == rl;
-                (singleton_equal, disjoint)
+            match op {
+                Eq => {
+                    let disjoint = lh < rl || rh < ll;
+                    let singleton_equal = ll == lh && rl == rh && ll == rl;
+                    (singleton_equal, disjoint)
+                }
+                Ne => {
+                    let disjoint = lh < rl || rh < ll;
+                    let singleton_equal = ll == lh && rl == rh && ll == rl;
+                    (disjoint, singleton_equal)
+                }
+                Lt => {
+                    let always_true = lh < rl;
+                    let always_false = ll >= rh;
+                    (always_true, always_false)
+                }
+                Le => {
+                    let always_true = lh <= rl;
+                    let always_false = ll > rh;
+                    (always_true, always_false)
+                }
+                Gt => {
+                    let always_true = rh < ll;
+                    let always_false = rl >= lh;
+                    (always_true, always_false)
+                }
+                Ge => {
+                    let always_true = rh <= ll;
+                    let always_false = rl > lh;
+                    (always_true, always_false)
+                }
+                _ => unreachable!(),
             }
-
-            Ne => {
-                let disjoint = lh < rl || rh < ll;
-                let singleton_equal = ll == lh && rl == rh && ll == rl;
-                (disjoint, singleton_equal)
-            }
-
-            Lt => {
-                let always_true = lh < rl;
-                let always_false = ll >= rh;
-                (always_true, always_false)
-            }
-
-            Le => {
-                let always_true = lh <= rl;
-                let always_false = ll > rh;
-                (always_true, always_false)
-            }
-
-            Gt => {
-                let always_true = rh < ll;
-                let always_false = rl >= lh;
-                (always_true, always_false)
-            }
-
-            Ge => {
-                let always_true = rh <= ll;
-                let always_false = rl > lh;
-                (always_true, always_false)
-            }
-            _ => unreachable!(""),
         };
 
         make_bool_range(always_true, always_false, self)
-    }
-
-    fn handle_switch_int<'mir>(
-        &self,
-        discr: &'mir Operand<'tcx>,
-        targets: &'mir SwitchTargets,
-        state: &mut State<RangeLattice>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        // FIXME:
-        let value = match self.handle_operand(discr, state) {
-            ValueOrPlace::Value(value) => value,
-            ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
-        };
-
-        match value {
-            RangeLattice::Bottom => TerminatorEdges::None,
-            RangeLattice::Top => TerminatorEdges::SwitchInt { discr, targets },
-
-            RangeLattice::Range(Range { lo, hi, .. }) => {
-                // TODO: filter out more
-
-                // If the range is a singleton && it matches exactly one target,
-                // we can choose a single edge. Otherwise, keep it symbolic.
-                if lo == hi {
-                    let bits = lo.to_bits_unchecked();
-                    let target = targets.target_for_value(bits);
-                    TerminatorEdges::Single(target)
-                } else {
-                    TerminatorEdges::SwitchInt { discr, targets }
-                }
-            }
-        }
     }
 
     /// The caller must have flooded `place`.
@@ -849,7 +862,6 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
     }
 
     fn eval_operand(&self, op: &Operand<'tcx>, state: &mut State<RangeLattice>) -> RangeLattice {
-        // WARNING: might need to handle more values
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
@@ -1000,7 +1012,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collecto
                 let value = self.analysis.eval_operand(discr, &mut state_mut);
 
                 if let RangeLattice::Range(Range { lo, hi, .. }) = value {
-                    // Handle singleton range
                     if lo == hi {
                         let bits = lo.to_bits_unchecked();
                         let target = targets.target_for_value(bits);
@@ -1009,6 +1020,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collecto
                         return;
                     }
 
+                    // Filter out unreachable targets based on range
                     let lo_bits = lo.to_bits_unchecked();
                     let hi_bits = hi.to_bits_unchecked();
 
@@ -1039,6 +1051,8 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collecto
                             },
                         );
                     }
+                } else if matches!(value, RangeLattice::Bottom) {
+                    self.patch.patch_terminator(location.block, TerminatorKind::Unreachable);
                 }
             }
             _ => {}
@@ -1046,6 +1060,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collecto
     }
 }
 
+// TODO: test bool interval and shift interval
 #[cfg(test)]
 mod tests {
     use std::num::NonZero;
