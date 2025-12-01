@@ -20,8 +20,11 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
-          _4 = Eq(const 2_u8, const 0_u8);
-          assert(!move _4, "attempt to divide `{}` by zero", copy _3) -> [success: bb1, unwind continue];
+-         _4 = Eq(const 2_u8, const 0_u8);
+-         assert(!move _4, "attempt to divide `{}` by zero", copy _3) -> [success: bb1, unwind continue];
++         _4 = const false;
++         nop;
++         goto -> bb1;
       }
   
       bb1: {
@@ -30,7 +33,9 @@
           StorageLive(_5);
           StorageLive(_6);
           _6 = copy _2;
-          _5 = Lt(move _6, const 128_u8);
+-         _5 = Lt(move _6, const 128_u8);
++         _5 = const true;
++         nop;
           StorageDead(_6);
           _0 = const ();
           StorageDead(_5);

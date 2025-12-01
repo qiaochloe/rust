@@ -13,7 +13,8 @@
           _3 = copy _1;
           _2 = move _3 as u8 (IntToInt);
           StorageDead(_3);
-          switchInt(copy _2) -> [0: bb4, 1: bb3, 2: bb2, otherwise: bb1];
+-         switchInt(copy _2) -> [0: bb4, 1: bb3, 2: bb2, otherwise: bb1];
++         switchInt(copy _2) -> [0: bb4, 1: bb3, otherwise: bb1];
       }
   
       bb1: {
