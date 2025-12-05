@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR constant_prop.test.IntegerRange.diff
+// EMIT_MIR constant_prop.test.RangeAnalysisPass.diff
 fn test() -> u8 {
     // CHECK-LABEL: fn test(
     // CHECK: const 15_u8

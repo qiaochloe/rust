@@ -1,22 +1,18 @@
 //! Range analysis finds lower and upper bounds to the values that variables can assume.
 
 // NOTE: can implement array bounds checking elimination, overflow check elimination, static branch prediction
-// FIXME: remove Integer from the name
 
 // FIXME:
 // handle AddWithOverflow and SubWithOverflow
 // handle indexing operations
-// handle cast operations
 // char to int conversions
 // handle isize and usize
-// only u8 can be cast as char
-// char can be cast to u32
 // handle infinite loops, widening and lowering
 
-// FIXME: test casting
+// FIXME: can't handle control flow
+// e.g. if x < 10 { assert!(x < 10) };
 
 /* TESTS
-
 NOT OPTIMIZING:
 COMPARISON_OPS
 CONTROL_FLOW
@@ -34,17 +30,6 @@ FAILING TO COMPILE:
 nested_loops
 widening
 */
-// - assert_opt doesn't optimize out the assert
-// - comparison_ops doesn't optimize out the assert
-// - switch_int_opt doesn't optimize out the match
-// - shift_ops has an unrelated can't convert to uint bug
-
-// FIXME: can't handle control flow
-// e.g. if x < 10 { assert!(x < 10) };
-
-// FIXME: check to_i(|s: ScalarInt| -> i128 { s.to_int(s.size()) });
-// whether we should use s.size() or size
-
 // FIXME: remove
 #![allow(
     dead_code,
@@ -84,7 +69,7 @@ use crate::patch::MirPatch;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
-    pub lo: ScalarInt, // TODO: should this be ImmTy?
+    pub lo: ScalarInt, // FIXME: should this be ImmTy?
     pub hi: ScalarInt,
     pub signed: bool,
 }
@@ -181,9 +166,9 @@ impl HasTop for RangeLattice {
     const TOP: Self = Self::Top;
 }
 
-pub(super) struct IntegerRange;
+pub(super) struct RangeAnalysisPass;
 
-impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
+impl<'tcx> crate::MirPass<'tcx> for RangeAnalysisPass {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 3
     }
@@ -197,9 +182,8 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
         let place_limit = None;
         let map = Map::new(tcx, body, place_limit);
 
-        let results = debug_span!("analyze").in_scope(|| {
-            IntegerRangeAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None)
-        });
+        let results = debug_span!("analyze")
+            .in_scope(|| RangeAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         dbg!(&results.analysis.map);
         dbg!(&results.entry_states);
@@ -224,7 +208,7 @@ impl<'tcx> crate::MirPass<'tcx> for IntegerRange {
     }
 }
 
-struct IntegerRangeAnalysis<'a, 'tcx> {
+struct RangeAnalysis<'a, 'tcx> {
     map: Map<'tcx>,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
@@ -232,10 +216,10 @@ struct IntegerRangeAnalysis<'a, 'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
 }
 
-impl<'tcx> Analysis<'tcx> for IntegerRangeAnalysis<'_, 'tcx> {
+impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
     type Domain = State<RangeLattice>;
 
-    const NAME: &'static str = "IntegerRangeAnalysis";
+    const NAME: &'static str = "RangeAnalysis";
 
     fn bottom_value(&self, _body: &Body<'tcx>) -> Self::Domain {
         State::Unreachable
@@ -296,7 +280,7 @@ impl<'tcx> Analysis<'tcx> for IntegerRangeAnalysis<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
+impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map<'tcx>) -> Self {
         let typing_env = body.typing_env(tcx);
         Self {
@@ -688,7 +672,6 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 // These terminators have no effect on the analysis.
-                // FIXME: check if that is true
             }
         }
         terminator.edges()
@@ -699,7 +682,6 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         return_places: CallReturnPlaces<'_, 'tcx>,
         state: &mut State<RangeLattice>,
     ) {
-        // FIXME: not interprocedural yet
         return_places.for_each(|place| {
             state.flood(place.as_ref(), &self.map);
         })
@@ -1130,12 +1112,8 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
 }
 
 /// This is used to visualize the dataflow analysis.
-impl<'tcx> DebugWithContext<IntegerRangeAnalysis<'_, 'tcx>> for State<RangeLattice> {
-    fn fmt_with(
-        &self,
-        ctxt: &IntegerRangeAnalysis<'_, 'tcx>,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
+impl<'tcx> DebugWithContext<RangeAnalysis<'_, 'tcx>> for State<RangeLattice> {
+    fn fmt_with(&self, ctxt: &RangeAnalysis<'_, 'tcx>, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             State::Reachable(values) => debug_with_context(values, None, &ctxt.map, f),
             State::Unreachable => write!(f, "unreachable"),
@@ -1145,7 +1123,7 @@ impl<'tcx> DebugWithContext<IntegerRangeAnalysis<'_, 'tcx>> for State<RangeLatti
     fn fmt_diff_with(
         &self,
         old: &Self,
-        ctxt: &IntegerRangeAnalysis<'_, 'tcx>,
+        ctxt: &RangeAnalysis<'_, 'tcx>,
         f: &mut Formatter<'_>,
     ) -> std::fmt::Result {
         match (self, old) {
@@ -1158,7 +1136,7 @@ impl<'tcx> DebugWithContext<IntegerRangeAnalysis<'_, 'tcx>> for State<RangeLatti
 }
 
 /// Helper methods for dead code elimination
-impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
+impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     /// Evaluates a boolean operand.
     /// Returns Some(true) if always true, Some(false) if always false, None if unknown.
     fn eval_bool(&self, operand: &Operand<'tcx>, state: &State<RangeLattice>) -> Option<bool> {
@@ -1198,7 +1176,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
 struct Collector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    analysis: &'a IntegerRangeAnalysis<'a, 'tcx>,
+    analysis: &'a RangeAnalysis<'a, 'tcx>,
     patch: MirPatch<'tcx>,
 }
 
@@ -1206,16 +1184,16 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
-        results: &'a rustc_mir_dataflow::Results<'tcx, IntegerRangeAnalysis<'a, 'tcx>>,
+        results: &'a rustc_mir_dataflow::Results<'tcx, RangeAnalysis<'a, 'tcx>>,
     ) -> Self {
         Self { tcx, body, analysis: &results.analysis, patch: MirPatch::new(body) }
     }
 }
 
-impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collector<'a, 'tcx> {
+impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, 'tcx> {
     fn visit_after_primary_statement_effect(
         &mut self,
-        _analysis: &IntegerRangeAnalysis<'a, 'tcx>,
+        _analysis: &RangeAnalysis<'a, 'tcx>,
         state: &State<RangeLattice>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -1270,7 +1248,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, IntegerRangeAnalysis<'a, 'tcx>> for Collecto
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &IntegerRangeAnalysis<'a, 'tcx>,
+        _analysis: &RangeAnalysis<'a, 'tcx>,
         state: &State<RangeLattice>,
         terminator: &Terminator<'tcx>,
         location: Location,

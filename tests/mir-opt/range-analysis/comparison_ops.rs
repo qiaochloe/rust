@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR comparison_ops.test.IntegerRange.diff
+// EMIT_MIR comparison_ops.test.RangeAnalysisPass.diff
 fn test(x: u8, y: u8) -> bool {
     // CHECK-LABEL: fn test(
     // CHECK: const true

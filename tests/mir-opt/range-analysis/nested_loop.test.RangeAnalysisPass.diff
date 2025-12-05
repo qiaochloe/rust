@@ -1,0 +1,12 @@
+- // MIR for `test` before RangeAnalysisPass
++ // MIR for `test` after RangeAnalysisPass
+  
+  fn test() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+          _0 = const true;
+          return;
+      }
+  }
+  

@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR binary_ops.test.IntegerRange.diff
+// EMIT_MIR binary_ops.test.RangeAnalysisPass.diff
 fn test(x: u8, y: u8, x_signed: i8, y_signed: i8, shift: u8) {
     // CHECK-LABEL: fn test(
     // x is [0, 255], y is [0, 255]

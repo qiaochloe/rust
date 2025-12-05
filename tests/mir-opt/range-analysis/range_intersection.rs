@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR range_intersection.test.IntegerRange.diff
+// EMIT_MIR range_intersection.test.RangeAnalysisPass.diff
 fn test(x: u8) {
     // CHECK-LABEL: fn test(
     // Test range intersection: x is [0, 255]

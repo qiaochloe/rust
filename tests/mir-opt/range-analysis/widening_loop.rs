@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR widening_loop.test.IntegerRange.diff
+// EMIT_MIR widening_loop.test.RangeAnalysisPass.diff
 fn test() -> u8 {
     0
     //// CHECK-LABEL: fn test(

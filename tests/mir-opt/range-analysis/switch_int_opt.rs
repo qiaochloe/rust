@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR switch_int_opt.test.IntegerRange.diff
+// EMIT_MIR switch_int_opt.test.RangeAnalysisPass.diff
 fn test(x: u8) -> &'static str {
     // CHECK-LABEL: fn test(
     // x is [0, 10] after the check
@@ -10,7 +10,7 @@ fn test(x: u8) -> &'static str {
             1 => "one",
             5 => "five",
             10 => "ten",
-            20 => "twenty", // Unreachable
+            20 => "twenty",   // Unreachable
             100 => "hundred", // Unreachable
             _ => "other",
         }
@@ -18,4 +18,3 @@ fn test(x: u8) -> &'static str {
         "unknown"
     }
 }
-

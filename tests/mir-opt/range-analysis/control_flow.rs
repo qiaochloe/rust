@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR control_flow.test.IntegerRange.diff
+// EMIT_MIR control_flow.test.RangeAnalysisPass.diff
 fn test(x: u8, y: u8) {
     // CHECK-LABEL: fn test(
     if x <= 10 {

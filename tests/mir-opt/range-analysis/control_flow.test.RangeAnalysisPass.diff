@@ -1,5 +1,5 @@
-- // MIR for `test` before IntegerRange
-+ // MIR for `test` after IntegerRange
+- // MIR for `test` before RangeAnalysisPass
++ // MIR for `test` after RangeAnalysisPass
   
   fn test(_1: u8, _2: u8) -> () {
       debug x => _1;

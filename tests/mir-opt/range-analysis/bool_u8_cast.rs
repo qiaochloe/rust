@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR bool_u8_cast.test.IntegerRange.diff
+// EMIT_MIR bool_u8_cast.test.RangeAnalysisPass.diff
 fn test(x: bool) -> &'static str {
     // CHECK-LABEL: fn test(
     match x as u8 {

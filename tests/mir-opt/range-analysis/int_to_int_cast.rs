@@ -1,6 +1,6 @@
-//@ test-mir-pass: IntegerRange
+//@ test-mir-pass: RangeAnalysisPass
 
-// EMIT_MIR int_to_int_cast.test.IntegerRange.diff
+// EMIT_MIR int_to_int_cast.test.RangeAnalysisPass.diff
 fn test(x: u8) -> u8 {
     // CHECK-LABEL: fn test(
     // Test u8 to u16 cast: x is [0, 255] (u8) -> [0, 255] (u16)
