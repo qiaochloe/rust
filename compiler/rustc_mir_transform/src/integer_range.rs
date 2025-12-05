@@ -84,7 +84,7 @@ use crate::patch::MirPatch;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
-    pub lo: ScalarInt,
+    pub lo: ScalarInt, // TODO: should this be ImmTy?
     pub hi: ScalarInt,
     pub signed: bool,
 }
@@ -724,11 +724,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                     RangeLattice::Range(Range::singleton(scalar_int, ty.is_signed()))
                 }
                 None => {
-                    if let Some(type_range) = self.get_type_range(ty) {
-                        RangeLattice::Range(type_range)
-                    } else {
-                        RangeLattice::Top
-                    }
+                    self.get_type_range(ty).map(RangeLattice::Range).unwrap_or(RangeLattice::Top)
                 }
             }
         } else {
@@ -736,6 +732,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         }
     }
 
+    /// Must only be run without overflows
     /// Returns val and overflow
     fn binary_op(
         &self,
@@ -759,16 +756,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                 let size = layout.size;
                 let signed = ty.is_signed();
 
-                use BinOp::*;
-                let res = match op {
-                    Add | Sub | Mul | Div => self.arith_interval(op, l, r, size, signed),
-                    BitAnd | BitOr | BitXor => self.bitwise_interval(op, l, r, size),
-                    // FIXME: handle ShrUnchecked, ShlUnchecked
-                    Shl | Shr => self.shift_interval(op, l, r, size, signed),
-                    Eq | Ne | Lt | Le | Gt | Ge => self.bool_interval(op, l, r, size, signed),
-                    _ => return (RangeLattice::Top, RangeLattice::Top),
-                };
-
+                let res = self.binary_interval(op, l, r, size, signed);
                 (res, res)
             }
             (RangeLattice::Bottom, _)
@@ -781,7 +769,7 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         }
     }
 
-    fn arith_interval(
+    fn binary_interval(
         &self,
         op: BinOp,
         l: Range,
@@ -789,8 +777,6 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
         size: Size,
         signed: bool,
     ) -> RangeLattice {
-        use BinOp::*;
-
         // Get the type and layout for creating ImmTy values
         let ty = if signed {
             match size.bytes() {
@@ -811,328 +797,278 @@ impl<'a, 'tcx> IntegerRangeAnalysis<'a, 'tcx> {
                 _ => return RangeLattice::Top,
             }
         };
+
         let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
             return RangeLattice::Top;
         };
 
-        // Evaluate all corner cases using ecx
-        let candidates = [(l.lo, r.lo), (l.lo, r.hi), (l.hi, r.lo), (l.hi, r.hi)];
-
-        let mut results: Vec<ScalarInt> = Vec::new();
         let mut ecx = self.ecx.borrow_mut();
 
-        for (left_val, right_val) in candidates.iter() {
-            // Convert ScalarInt to Scalar
-            let left_scalar = Scalar::from_uint(left_val.to_bits_unchecked(), size);
-            let right_scalar = Scalar::from_uint(right_val.to_bits_unchecked(), size);
+        let eval = |l: ScalarInt, r: ScalarInt, op: BinOp| -> Option<ScalarInt> {
+            let left_scalar = Scalar::from_uint(l.to_bits_unchecked(), size);
+            let right_scalar = Scalar::from_uint(r.to_bits_unchecked(), size);
 
-            // Create ImmTy values
             let left_imm = ImmTy::from_scalar(left_scalar, layout);
             let right_imm = ImmTy::from_scalar(right_scalar, layout);
 
-            // Evaluate using ecx
-            if let Some(result) = ecx.binary_op(op, &left_imm, &right_imm).discard_err() {
-                let scalar = result.to_scalar();
-                if let Ok(scalar_int) = scalar.try_to_scalar_int() {
-                    results.push(scalar_int);
+            ecx.binary_op(op, &left_imm, &right_imm)
+                .discard_err()
+                .and_then(|result| result.to_scalar().try_to_scalar_int().ok())
+        };
+
+        let type_range =
+            self.get_type_range(ty).map(RangeLattice::Range).unwrap_or(RangeLattice::Top);
+
+        let to_range = |opt: Option<ScalarInt>| -> RangeLattice {
+            opt.map(|val| RangeLattice::Range(Range::singleton(val, signed))).unwrap_or(type_range)
+        };
+
+        let to_range_pair =
+            |min_opt: Option<ScalarInt>, max_opt: Option<ScalarInt>| -> RangeLattice {
+                match (min_opt, max_opt) {
+                    (Some(min_val), Some(max_val)) => {
+                        RangeLattice::Range(Range::new(min_val, max_val, signed))
+                    }
+                    _ => type_range,
                 }
-            }
-        }
+            };
 
-        drop(ecx);
-
-        if results.is_empty() {
-            return RangeLattice::Top;
-        }
-
-        // Find min and max from results
-        let min_val = results
-            .iter()
-            .min_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-        let max_val = results
-            .iter()
-            .max_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-
-        RangeLattice::Range(Range::new(*min_val, *max_val, signed))
-    }
-
-    fn bitwise_interval(&self, op: BinOp, l: Range, r: Range, size: Size) -> RangeLattice {
         use BinOp::*;
-
-        let signed = l.signed;
-
-        // Get the type and layout for creating ImmTy values
-        let ty = if signed {
-            match size.bytes() {
-                1 => self.tcx.types.i8,
-                2 => self.tcx.types.i16,
-                4 => self.tcx.types.i32,
-                8 => self.tcx.types.i64,
-                16 => self.tcx.types.i128,
-                _ => return RangeLattice::Top,
+        match op {
+            Add => {
+                // (l.lo + r.lo, l.hi + r.hi)
+                return to_range_pair(eval(l.lo, r.lo, op), eval(l.hi, r.hi, op));
             }
-        } else {
-            match size.bytes() {
-                1 => self.tcx.types.u8,
-                2 => self.tcx.types.u16,
-                4 => self.tcx.types.u32,
-                8 => self.tcx.types.u64,
-                16 => self.tcx.types.u128,
-                _ => return RangeLattice::Top,
+
+            Sub => {
+                // (l.lo - r.hi, l.hi - r.lo)
+                return to_range_pair(eval(l.lo, r.hi, op), eval(l.hi, r.lo, op));
             }
-        };
-        let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
-            return RangeLattice::Top;
-        };
 
-        // Evaluate all corner cases using ecx
-        let candidates = [(l.lo, r.lo), (l.lo, r.hi), (l.hi, r.lo), (l.hi, r.hi)];
+            Mul | Div => {
+                // Try all candidates, filtering out errors (e.g., division by zero)
+                let candidates = [(l.lo, r.lo), (l.lo, r.hi), (l.hi, r.lo), (l.hi, r.hi)];
+                let results: Vec<ScalarInt> = candidates
+                    .iter()
+                    .filter_map(|(l_val, r_val)| eval(*l_val, *r_val, op))
+                    .collect();
 
-        let mut results: Vec<ScalarInt> = Vec::new();
-        let mut ecx = self.ecx.borrow_mut();
-
-        for (left_val, right_val) in candidates.iter() {
-            // Convert ScalarInt to Scalar
-            let left_scalar = Scalar::from_uint(left_val.to_bits_unchecked(), size);
-            let right_scalar = Scalar::from_uint(right_val.to_bits_unchecked(), size);
-
-            // Create ImmTy values
-            let left_imm = ImmTy::from_scalar(left_scalar, layout);
-            let right_imm = ImmTy::from_scalar(right_scalar, layout);
-
-            // Evaluate using ecx
-            if let Some(result) = ecx.binary_op(op, &left_imm, &right_imm).discard_err() {
-                let scalar = result.to_scalar();
-                if let Ok(scalar_int) = scalar.try_to_scalar_int() {
-                    results.push(scalar_int);
+                if results.is_empty() {
+                    return RangeLattice::Top;
                 }
+
+                let min_val = results
+                    .iter()
+                    .min_by(|a, b| {
+                        if signed {
+                            a.to_int(size).cmp(&b.to_int(size))
+                        } else {
+                            a.to_uint(size).cmp(&b.to_uint(size))
+                        }
+                    })
+                    .unwrap();
+
+                let max_val = results
+                    .iter()
+                    .max_by(|a, b| {
+                        if signed {
+                            a.to_int(size).cmp(&b.to_int(size))
+                        } else {
+                            a.to_uint(size).cmp(&b.to_uint(size))
+                        }
+                    })
+                    .unwrap();
+
+                return RangeLattice::Range(Range::new(*min_val, *max_val, signed));
             }
-        }
+
+            BitAnd => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    return to_range(eval(l.lo, r.lo, op));
+                }
+
+                if !signed {
+                    // 0 <= (l & r) <= min(l, r)
+                    let zero = ScalarInt::try_from_uint(0u128, size).unwrap();
+                    let cmp = l.hi.to_uint(size).cmp(&r.hi.to_uint(size));
+                    let min = if cmp.is_gt() { r.hi } else { l.hi };
+                    return RangeLattice::Range(Range::new(zero, min, signed));
+                }
+
+                // FIXME: might be able to do optimizations
+                return RangeLattice::Top;
+            }
+
+            BitOr => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    return to_range(eval(l.lo, r.lo, op));
+                }
+
+                if !signed {
+                    // min >= max(l.lo, r.lo)
+                    // max <= l.hi | r.hi
+                    let cmp = l.lo.to_uint(size).cmp(&r.lo.to_uint(size));
+                    let min_val = if cmp.is_gt() { l.lo } else { r.lo };
+                    return to_range_pair(Some(min_val), eval(l.hi, r.hi, op));
+                }
+
+                // FIXME: might be able to do optimizations
+                return RangeLattice::Top;
+            }
+
+            BitXor => {
+                if l.lo == l.hi && r.lo == r.hi {
+                    return to_range(eval(l.lo, r.lo, op));
+                }
+
+                if !signed {
+                    let zero = ScalarInt::try_from_uint(0u128, size).unwrap();
+                    let max_val = ScalarInt::try_from_uint(size.unsigned_int_max(), size).unwrap();
+                    return RangeLattice::Range(Range::new(zero, max_val, signed));
+                }
+
+                // FIXME: might be able to optimize
+                return RangeLattice::Top;
+            }
+
+            Shr | Shl => {
+                return to_range_pair(eval(l.lo, r.hi, op), eval(l.hi, r.lo, op));
+            }
+
+            Eq => {
+                let singleton_equal = l.lo == l.hi && r.lo == r.hi && l.lo == r.lo;
+                if singleton_equal {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+
+                let cmp1 = if signed {
+                    l.hi.to_int(size).cmp(&r.lo.to_int(size))
+                } else {
+                    l.hi.to_uint(size).cmp(&r.lo.to_uint(size))
+                };
+                let cmp2 = if signed {
+                    r.hi.to_int(size).cmp(&l.lo.to_int(size))
+                } else {
+                    r.hi.to_uint(size).cmp(&l.lo.to_uint(size))
+                };
+                let disjoint = cmp1.is_lt() && cmp2.is_lt();
+                if disjoint {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            Ne => {
+                let singleton_equal = l.lo == l.hi && r.lo == r.hi && l.lo == r.lo;
+                if singleton_equal {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+
+                let cmp1 = if signed {
+                    l.hi.to_int(size).cmp(&r.lo.to_int(size))
+                } else {
+                    l.hi.to_uint(size).cmp(&r.lo.to_uint(size))
+                };
+                let cmp2 = if signed {
+                    r.hi.to_int(size).cmp(&l.lo.to_int(size))
+                } else {
+                    r.hi.to_uint(size).cmp(&l.lo.to_uint(size))
+                };
+                let disjoint = cmp1.is_lt() && cmp2.is_lt();
+                if disjoint {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            Lt => {
+                let cmp1 = if signed {
+                    l.hi.to_int(size).cmp(&r.lo.to_int(size))
+                } else {
+                    l.hi.to_uint(size).cmp(&r.lo.to_uint(size))
+                };
+                if cmp1.is_lt() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+                let cmp2 = if signed {
+                    l.lo.to_int(size).cmp(&r.hi.to_int(size))
+                } else {
+                    l.lo.to_uint(size).cmp(&r.hi.to_uint(size))
+                };
+                if cmp2.is_ge() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            Le => {
+                let cmp1 = if signed {
+                    l.hi.to_int(size).cmp(&r.lo.to_int(size))
+                } else {
+                    l.hi.to_uint(size).cmp(&r.lo.to_uint(size))
+                };
+                if cmp1.is_le() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+                let cmp2 = if signed {
+                    l.lo.to_int(size).cmp(&r.hi.to_int(size))
+                } else {
+                    l.lo.to_uint(size).cmp(&r.hi.to_uint(size))
+                };
+                if cmp2.is_gt() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            Gt => {
+                let cmp1 = if signed {
+                    r.hi.to_int(size).cmp(&l.lo.to_int(size))
+                } else {
+                    r.hi.to_uint(size).cmp(&l.lo.to_uint(size))
+                };
+                if cmp1.is_lt() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+                let cmp2 = if signed {
+                    r.lo.to_int(size).cmp(&l.hi.to_int(size))
+                } else {
+                    r.lo.to_uint(size).cmp(&l.hi.to_uint(size))
+                };
+                if cmp2.is_ge() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            Ge => {
+                let cmp1 = if signed {
+                    r.hi.to_int(size).cmp(&l.lo.to_int(size))
+                } else {
+                    r.hi.to_uint(size).cmp(&l.lo.to_uint(size))
+                };
+                if cmp1.is_le() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::TRUE, false));
+                }
+                let cmp2 = if signed {
+                    r.lo.to_int(size).cmp(&l.hi.to_int(size))
+                } else {
+                    r.lo.to_uint(size).cmp(&l.hi.to_uint(size))
+                };
+                if cmp2.is_gt() {
+                    return RangeLattice::Range(Range::singleton(ScalarInt::FALSE, false));
+                }
+                return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed));
+            }
+
+            // FIXME: handle?
+            AddWithOverflow | SubWithOverflow | MulWithOverflow => unreachable!(),
+            _ => {}
+        };
 
         drop(ecx);
 
-        if results.is_empty() {
-            return RangeLattice::Top;
-        }
-
-        // Find min and max from results
-        let min_val = results
-            .iter()
-            .min_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-        let max_val = results
-            .iter()
-            .max_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-
-        RangeLattice::Range(Range::new(*min_val, *max_val, signed))
-    }
-
-    fn shift_interval(
-        &self,
-        op: BinOp,
-        l: Range,
-        r: Range,
-        size: Size,
-        signed: bool,
-    ) -> RangeLattice {
-        use BinOp::*;
-
-        // Get the type and layout for creating ImmTy values
-        let ty = if signed {
-            match size.bytes() {
-                1 => self.tcx.types.i8,
-                2 => self.tcx.types.i16,
-                4 => self.tcx.types.i32,
-                8 => self.tcx.types.i64,
-                16 => self.tcx.types.i128,
-                _ => return RangeLattice::Top,
-            }
-        } else {
-            match size.bytes() {
-                1 => self.tcx.types.u8,
-                2 => self.tcx.types.u16,
-                4 => self.tcx.types.u32,
-                8 => self.tcx.types.u64,
-                16 => self.tcx.types.u128,
-                _ => return RangeLattice::Top,
-            }
-        };
-        let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
-            return RangeLattice::Top;
-        };
-
-        // For shift operations, we need to evaluate all combinations of l.{lo,hi} with r.{lo,hi}
-        let candidates = [(l.lo, r.lo), (l.lo, r.hi), (l.hi, r.lo), (l.hi, r.hi)];
-
-        let mut results: Vec<ScalarInt> = Vec::new();
-        let mut ecx = self.ecx.borrow_mut();
-
-        for (left_val, right_val) in candidates.iter() {
-            // Convert ScalarInt to Scalar
-            let left_scalar = Scalar::from_uint(left_val.to_bits_unchecked(), size);
-            let right_scalar = Scalar::from_uint(right_val.to_bits_unchecked(), size);
-
-            // Create ImmTy values
-            let left_imm = ImmTy::from_scalar(left_scalar, layout);
-            let right_imm = ImmTy::from_scalar(right_scalar, layout);
-
-            // Evaluate using ecx
-            if let Some(result) = ecx.binary_op(op, &left_imm, &right_imm).discard_err() {
-                let scalar = result.to_scalar();
-                if let Ok(scalar_int) = scalar.try_to_scalar_int() {
-                    results.push(scalar_int);
-                }
-            }
-        }
-
-        drop(ecx);
-
-        if results.is_empty() {
-            return RangeLattice::Top;
-        }
-
-        // Find min and max from results
-        let min_val = results
-            .iter()
-            .min_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-        let max_val = results
-            .iter()
-            .max_by(|a, b| {
-                if signed {
-                    a.to_int(size).cmp(&b.to_int(size))
-                } else {
-                    a.to_uint(size).cmp(&b.to_uint(size))
-                }
-            })
-            .unwrap();
-
-        RangeLattice::Range(Range::new(*min_val, *max_val, signed))
-    }
-
-    fn bool_interval(
-        &self,
-        op: BinOp,
-        l: Range,
-        r: Range,
-        size: Size,
-        signed: bool,
-    ) -> RangeLattice {
-        use BinOp::*;
-
-        // Get the type and layout for creating ImmTy values
-        let ty = if signed {
-            match size.bytes() {
-                1 => self.tcx.types.i8,
-                2 => self.tcx.types.i16,
-                4 => self.tcx.types.i32,
-                8 => self.tcx.types.i64,
-                16 => self.tcx.types.i128,
-                _ => {
-                    return RangeLattice::Range(Range::new(
-                        ScalarInt::FALSE,
-                        ScalarInt::TRUE,
-                        false,
-                    ));
-                }
-            }
-        } else {
-            match size.bytes() {
-                1 => self.tcx.types.u8,
-                2 => self.tcx.types.u16,
-                4 => self.tcx.types.u32,
-                8 => self.tcx.types.u64,
-                16 => self.tcx.types.u128,
-                _ => {
-                    return RangeLattice::Range(Range::new(
-                        ScalarInt::FALSE,
-                        ScalarInt::TRUE,
-                        false,
-                    ));
-                }
-            }
-        };
-        let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
-            return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, false));
-        };
-
-        // Evaluate all corner cases using ecx
-        let candidates = [(l.lo, r.lo), (l.lo, r.hi), (l.hi, r.lo), (l.hi, r.hi)];
-
-        let mut results: Vec<bool> = Vec::new();
-        let mut ecx = self.ecx.borrow_mut();
-
-        for (left_val, right_val) in candidates.iter() {
-            // Convert ScalarInt to Scalar
-            let left_scalar = Scalar::from_uint(left_val.to_bits_unchecked(), size);
-            let right_scalar = Scalar::from_uint(right_val.to_bits_unchecked(), size);
-
-            // Create ImmTy values
-            let left_imm = ImmTy::from_scalar(left_scalar, layout);
-            let right_imm = ImmTy::from_scalar(right_scalar, layout);
-
-            // Evaluate comparison using ecx
-            if let Some(result) = ecx.binary_op(op, &left_imm, &right_imm).discard_err() {
-                let scalar = result.to_scalar();
-                if let Ok(scalar_int) = scalar.try_to_scalar_int() {
-                    // Boolean results are 0 (false) or 1 (true)
-                    let bool_val = scalar_int.to_bits_unchecked() != 0;
-                    results.push(bool_val);
-                }
-            }
-        }
-
-        drop(ecx);
-
-        if results.is_empty() {
-            return RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, false));
-        }
-
-        // Determine if always true, always false, or unknown
-        let all_true = results.iter().all(|&x| x);
-        let all_false = results.iter().all(|&x| !x);
-
-        let signed = false;
-        if all_true && !all_false {
-            RangeLattice::Range(Range::singleton(ScalarInt::TRUE, signed))
-        } else if all_false && !all_true {
-            RangeLattice::Range(Range::singleton(ScalarInt::FALSE, signed))
-        } else {
-            RangeLattice::Range(Range::new(ScalarInt::FALSE, ScalarInt::TRUE, signed))
-        }
+        return RangeLattice::Top;
     }
 
     /// The caller must have flooded `place`.
