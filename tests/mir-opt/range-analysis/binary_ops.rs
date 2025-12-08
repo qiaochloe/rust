@@ -34,7 +34,7 @@ fn test(x: u8, y: u8, x_signed: i8, y_signed: i8, shift: u8) {
     assert!(or_result >= 0 && or_result <= 255);
     assert!(xor_result >= 0 && xor_result <= 255);
 
-    // Shit ops
+    // Shift ops
     let shl_result = x << shift;
     let shr_result = x >> shift;
     let shl_result2 = (y as u8) << shift;

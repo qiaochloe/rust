@@ -3,10 +3,52 @@
   
   fn test() -> u8 {
       let mut _0: u8;
+      let mut _1: u8;
+      let _2: ();
+      let mut _3: ();
+      let _4: ();
+      let mut _5: bool;
+      let mut _6: u8;
+      let mut _7: !;
+      scope 1 {
+          debug i => _1;
+      }
   
       bb0: {
-          _0 = const 0_u8;
+          StorageLive(_1);
+          _1 = const 0_u8;
+          StorageLive(_2);
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = copy _1;
+          _5 = Ge(move _6, const 1_u8);
+          switchInt(move _5) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          _2 = const ();
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_2);
+          _0 = copy _1;
+          StorageDead(_1);
           return;
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          _4 = const ();
+          StorageDead(_5);
+          StorageDead(_4);
+          _1 = Add(copy _1, const 1_u8);
+          _3 = const ();
+          goto -> bb1;
       }
   }
   

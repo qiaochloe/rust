@@ -144,12 +144,16 @@ impl JoinSemiLattice for RangeLattice {
                 *self = Self::Top;
                 true
             }
-            (Self::Range(a), Self::Range(b)) if a == b => false,
-            (Self::Range(a), Self::Range(b)) if a != b => {
-                *self = Self::Range(a.join(b));
+            (Self::Range(a), Self::Range(b)) => {
+                let old = a.clone();
+                let new = a.join(b);
+                *self = Self::Range(new);
+                old != new
+            }
+            (Self::Range(_), Self::Top) => {
+                *self = Self::Top;
                 true
             }
-            (Self::Range(x), _) => false,
         }
     }
 }
@@ -179,6 +183,7 @@ impl<'tcx> crate::MirPass<'tcx> for RangeAnalysisPass {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        dbg!(&body.span);
         let place_limit = None;
         let map = Map::new(tcx, body, place_limit);
 
@@ -231,15 +236,17 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
         for arg in body.args_iter() {
             let arg_ty = self.local_decls[arg].ty;
             let place_ref = PlaceRef { local: arg, projection: &[] };
-            let type_range = self.get_type_range(arg_ty);
-            if let Some(type_range) = type_range {
-                state.assign(
-                    place_ref,
-                    ValueOrPlace::Value(RangeLattice::Range(type_range)),
-                    &self.map,
-                );
-            } else {
-                state.flood(place_ref, &self.map);
+            match self.get_type_range(arg_ty) {
+                Some(type_range) => {
+                    state.assign(
+                        place_ref,
+                        ValueOrPlace::Value(RangeLattice::Range(type_range)),
+                        &self.map,
+                    );
+                }
+                None => {
+                    state.flood(place_ref, &self.map);
+                }
             }
         }
     }
@@ -1157,6 +1164,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             RangeLattice::Range(Range { lo, hi, .. }) => {
                 let lo_bits = lo.to_bits_unchecked();
                 let hi_bits = hi.to_bits_unchecked();
+                // FIXME: are assert statements allowed?
                 assert!(lo_bits == 0 || lo_bits == 1);
                 assert!(hi_bits == 0 || hi_bits == 1);
 
