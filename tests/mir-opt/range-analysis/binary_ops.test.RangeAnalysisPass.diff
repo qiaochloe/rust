@@ -220,7 +220,7 @@
           StorageLive(_19);
           _19 = copy _2;
           _20 = Eq(copy _19, const 0_u8);
-          assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb2, unwind unreachable];
+          assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb2, unwind continue];
       }
   
       bb2: {
@@ -290,7 +290,7 @@
   
       bb9: {
           StorageLive(_26);
-          _26 = core::panicking::panic(const "assertion failed: sum >= 0 && sum <= 255") -> unwind unreachable;
+          _26 = core::panicking::panic(const "assertion failed: sum >= 0 && sum <= 255") -> unwind continue;
       }
   
       bb10: {
@@ -320,11 +320,8 @@
           StorageLive(_34);
           StorageLive(_35);
           _35 = copy _15;
--         _34 = Ge(move _35, const 0_u8);
--         switchInt(move _34) -> [0: bb16, otherwise: bb15];
-+         _34 = const true;
-+         nop;
-+         goto -> bb15;
+          _34 = Ge(move _35, const 0_u8);
+          switchInt(move _34) -> [0: bb16, otherwise: bb15];
       }
   
       bb13: {
@@ -334,7 +331,7 @@
   
       bb14: {
           StorageLive(_32);
-          _32 = core::panicking::panic(const "assertion failed: prod >= 0 && prod <= 255") -> unwind unreachable;
+          _32 = core::panicking::panic(const "assertion failed: prod >= 0 && prod <= 255") -> unwind continue;
       }
   
       bb15: {
@@ -342,11 +339,8 @@
           StorageLive(_36);
           StorageLive(_37);
           _37 = copy _15;
--         _36 = Le(move _37, const u8::MAX);
--         switchInt(move _36) -> [0: bb18, otherwise: bb17];
-+         _36 = const true;
-+         nop;
-+         goto -> bb17;
+          _36 = Le(move _37, const u8::MAX);
+          switchInt(move _36) -> [0: bb18, otherwise: bb17];
       }
   
       bb16: {
@@ -378,7 +372,7 @@
   
       bb19: {
           StorageLive(_38);
-          _38 = core::panicking::panic(const "assertion failed: quot >= 0 && quot <= 255") -> unwind unreachable;
+          _38 = core::panicking::panic(const "assertion failed: quot >= 0 && quot <= 255") -> unwind continue;
       }
   
       bb20: {
@@ -446,7 +440,7 @@
   
       bb24: {
           StorageLive(_44);
-          _44 = core::panicking::panic(const "assertion failed: diff >= 0 && diff <= 255") -> unwind unreachable;
+          _44 = core::panicking::panic(const "assertion failed: diff >= 0 && diff <= 255") -> unwind continue;
       }
   
       bb25: {
@@ -490,7 +484,7 @@
   
       bb29: {
           StorageLive(_59);
-          _59 = core::panicking::panic(const "assertion failed: sum >= -128 && sum <= 127") -> unwind unreachable;
+          _59 = core::panicking::panic(const "assertion failed: sum >= -128 && sum <= 127") -> unwind continue;
       }
   
       bb30: {
@@ -534,7 +528,7 @@
   
       bb34: {
           StorageLive(_65);
-          _65 = core::panicking::panic(const "assertion failed: diff >= -128 && diff <= 127") -> unwind unreachable;
+          _65 = core::panicking::panic(const "assertion failed: diff >= -128 && diff <= 127") -> unwind continue;
       }
   
       bb35: {
@@ -602,7 +596,7 @@
   
       bb39: {
           StorageLive(_71);
-          _71 = core::panicking::panic(const "assertion failed: prod >= -128 && prod <= 127") -> unwind unreachable;
+          _71 = core::panicking::panic(const "assertion failed: prod >= -128 && prod <= 127") -> unwind continue;
       }
   
       bb40: {
@@ -646,7 +640,7 @@
   
       bb44: {
           StorageLive(_86);
-          _86 = core::panicking::panic(const "assertion failed: and_result >= 0 && and_result <= 255") -> unwind unreachable;
+          _86 = core::panicking::panic(const "assertion failed: and_result >= 0 && and_result <= 255") -> unwind continue;
       }
   
       bb45: {
@@ -690,7 +684,7 @@
   
       bb49: {
           StorageLive(_92);
-          _92 = core::panicking::panic(const "assertion failed: or_result >= 0 && or_result <= 255") -> unwind unreachable;
+          _92 = core::panicking::panic(const "assertion failed: or_result >= 0 && or_result <= 255") -> unwind continue;
       }
   
       bb50: {
@@ -766,7 +760,7 @@
   
       bb54: {
           StorageLive(_98);
-          _98 = core::panicking::panic(const "assertion failed: xor_result >= 0 && xor_result <= 255") -> unwind unreachable;
+          _98 = core::panicking::panic(const "assertion failed: xor_result >= 0 && xor_result <= 255") -> unwind continue;
       }
   
       bb55: {
@@ -810,7 +804,7 @@
   
       bb59: {
           StorageLive(_116);
-          _116 = core::panicking::panic(const "assertion failed: shl_result >= 0 && shl_result <= 255") -> unwind unreachable;
+          _116 = core::panicking::panic(const "assertion failed: shl_result >= 0 && shl_result <= 255") -> unwind continue;
       }
   
       bb60: {
@@ -854,7 +848,7 @@
   
       bb64: {
           StorageLive(_122);
-          _122 = core::panicking::panic(const "assertion failed: shr_result >= 0 && shr_result <= 255") -> unwind unreachable;
+          _122 = core::panicking::panic(const "assertion failed: shr_result >= 0 && shr_result <= 255") -> unwind continue;
       }
   
       bb65: {
@@ -895,7 +889,7 @@
   
       bb69: {
           StorageLive(_128);
-          _128 = core::panicking::panic(const "assertion failed: shl_result2 >= 0 && shl_result2 <= 1") -> unwind unreachable;
+          _128 = core::panicking::panic(const "assertion failed: shl_result2 >= 0 && shl_result2 <= 1") -> unwind continue;
       }
   
       bb70: {
@@ -943,7 +937,7 @@
   
       bb74: {
           StorageLive(_134);
-          _134 = core::panicking::panic(const "assertion failed: shr_result2 >= 0 && shr_result2 <= 1") -> unwind unreachable;
+          _134 = core::panicking::panic(const "assertion failed: shr_result2 >= 0 && shr_result2 <= 1") -> unwind continue;
       }
   }
   

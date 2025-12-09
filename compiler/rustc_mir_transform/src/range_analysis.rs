@@ -177,29 +177,37 @@ impl RangeRelation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RangeLattice {
     Bottom,
-    Range(Range),
+    Range(Range, u8),
     Top,
 }
+
+impl RangeLattice {
+    fn range(range: Range) -> Self {
+        RangeLattice::Range(range, 0)
+    }
+}
+
+const JOIN_LIMIT: u8 = 10;
 
 impl JoinSemiLattice for RangeLattice {
     fn join(&mut self, other: &Self) -> bool {
         match (&*self, other) {
             (Self::Top, _) | (_, Self::Bottom) => false,
-            (Self::Bottom, Self::Range(x)) => {
-                *self = Self::Range(x.clone());
+            (Self::Bottom, Self::Range(x, _)) => {
+                *self = Self::range(x.clone());
                 true
             }
             (Self::Bottom, Self::Top) => {
                 *self = Self::Top;
                 true
             }
-            (Self::Range(a), Self::Range(b)) => {
+            (Self::Range(a, joins), Self::Range(b, _)) if *joins < JOIN_LIMIT => {
                 let old = a.clone();
                 let new = a.join(b);
-                *self = Self::Range(new);
+                *self = Self::Range(new, *joins + 1);
                 old != new
             }
-            (Self::Range(_), Self::Top) => {
+            (Self::Range(..), _) => {
                 *self = Self::Top;
                 true
             }
@@ -220,11 +228,11 @@ impl HasTop for RangeLattice {
 }
 
 const RANGE_TRUE: RangeLattice =
-    RangeLattice::Range(Range { lo: ScalarInt::TRUE, hi: ScalarInt::TRUE, signed: false });
+    RangeLattice::Range(Range { lo: ScalarInt::TRUE, hi: ScalarInt::TRUE, signed: false }, 0);
 const RANGE_FALSE: RangeLattice =
-    RangeLattice::Range(Range { lo: ScalarInt::FALSE, hi: ScalarInt::FALSE, signed: false });
+    RangeLattice::Range(Range { lo: ScalarInt::FALSE, hi: ScalarInt::FALSE, signed: false }, 0);
 const RANGE_BOOL: RangeLattice =
-    RangeLattice::Range(Range { lo: ScalarInt::FALSE, hi: ScalarInt::TRUE, signed: false });
+    RangeLattice::Range(Range { lo: ScalarInt::FALSE, hi: ScalarInt::TRUE, signed: false }, 0);
 
 pub(super) struct RangeAnalysisPass;
 
@@ -296,7 +304,7 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
                 Some(type_range) => {
                     state.assign(
                         place_ref,
-                        ValueOrPlace::Value(RangeLattice::Range(type_range)),
+                        ValueOrPlace::Value(RangeLattice::range(type_range)),
                         &self.map,
                     );
                 }
@@ -556,7 +564,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 };
 
                 match self.eval_operand(operand, state) {
-                    RangeLattice::Range(range) => {
+                    RangeLattice::Range(range, _) => {
                         let target_signed = ty.is_signed();
                         let convert_bound = |bound: ScalarInt| -> ScalarInt {
                             let imm_ty = ImmTy::from_scalar_int(bound, operand_layout);
@@ -604,12 +612,12 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                         };
 
                         if wraps {
-                            RangeLattice::Range(type_range)
+                            RangeLattice::range(type_range)
                         } else {
                             let converted_range = Range::new(lo, hi, target_signed);
                             converted_range
                                 .intersect(type_range)
-                                .map(RangeLattice::Range)
+                                .map(RangeLattice::range)
                                 .unwrap_or(RangeLattice::Top)
                         }
                     }
@@ -617,7 +625,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                     RangeLattice::Top => {
                         // If operand is Top, check if we can at least provide the target type's range
                         self.get_type_range(*ty)
-                            .map(RangeLattice::Range)
+                            .map(RangeLattice::range)
                             .unwrap_or(RangeLattice::Top)
                     }
                 }
@@ -630,7 +638,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
             Rvalue::Cast(CastKind::FloatToInt, _operand, ty) => {
                 // Return the target type's range
-                self.get_type_range(*ty).map(RangeLattice::Range).unwrap_or(RangeLattice::Top)
+                self.get_type_range(*ty).map(RangeLattice::range).unwrap_or(RangeLattice::Top)
             }
 
             Rvalue::Cast(CastKind::FloatToFloat, _operand, _ty) => {
@@ -766,10 +774,10 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         } else if ty.is_integral() {
             match constant.const_.try_eval_scalar_int(self.tcx, self.typing_env) {
                 Some(scalar_int) => {
-                    RangeLattice::Range(Range::singleton(scalar_int, ty.is_signed()))
+                    RangeLattice::range(Range::singleton(scalar_int, ty.is_signed()))
                 }
                 None => {
-                    self.get_type_range(ty).map(RangeLattice::Range).unwrap_or(RangeLattice::Top)
+                    self.get_type_range(ty).map(RangeLattice::range).unwrap_or(RangeLattice::Top)
                 }
             }
         } else {
@@ -790,7 +798,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         let rlat = self.eval_operand(right, state);
         match (llat, rlat) {
             // Both sides are known, do the actual computation.
-            (RangeLattice::Range(l), RangeLattice::Range(r)) => {
+            (RangeLattice::Range(l, _), RangeLattice::Range(r, _)) => {
                 let ty = left.ty(self.local_decls, self.tcx);
                 if !ty.is_integral() {
                     return (RangeLattice::Top, RangeLattice::Top);
@@ -802,8 +810,8 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             }
             (RangeLattice::Bottom, _)
             | (_, RangeLattice::Bottom)
-            | (RangeLattice::Range(_), _)
-            | (_, RangeLattice::Range(_))
+            | (RangeLattice::Range(_, _), _)
+            | (_, RangeLattice::Range(_, _))
             | (RangeLattice::Top, RangeLattice::Top) => {
                 (RangeLattice::Bottom, RangeLattice::Bottom)
             }
@@ -824,7 +832,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
         let mut ecx = self.ecx.borrow_mut();
         let cmp = RangeRelation::from_ranges(&l, &r);
-        let type_range = self.get_type_range(layout.ty).map(RL::Range).unwrap_or(RL::Top);
+        let type_range = self.get_type_range(layout.ty).map(RL::range).unwrap_or(RL::Top);
 
         // Performs a binary operation using ecx
         let eval_ecx = |l: ScalarInt, r: ScalarInt, op: BinOp| -> Option<ImmTy<'_>> {
@@ -848,12 +856,12 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         };
 
         let to_range = |opt: Option<ScalarInt>| -> RL {
-            opt.map(|val| RL::Range(Range::singleton(val, signed))).unwrap_or(type_range)
+            opt.map(|val| RL::range(Range::singleton(val, signed))).unwrap_or(type_range)
         };
 
         let to_range_pair = |min_opt: Option<ScalarInt>, max_opt: Option<ScalarInt>| -> RL {
             match (min_opt, max_opt) {
-                (Some(min_val), Some(max_val)) => RL::Range(Range::new(min_val, max_val, signed)),
+                (Some(min_val), Some(max_val)) => RL::range(Range::new(min_val, max_val, signed)),
                 _ => type_range,
             }
         };
@@ -927,7 +935,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 } else {
                     results.sort_by(|a, b| a.to_uint(size).cmp(&b.to_uint(size)));
                 }
-                (RL::Range(Range::new(results[0], results[3], signed)), RANGE_FALSE)
+                (RL::range(Range::new(results[0], results[3], signed)), RANGE_FALSE)
             }
 
             Div => {
@@ -951,7 +959,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 } else {
                     results.sort_by(|a, b| a.to_uint(size).cmp(&b.to_uint(size)));
                 }
-                (RL::Range(Range::new(results[0], results[3], signed)), RL::Top)
+                (RL::range(Range::new(results[0], results[3], signed)), RL::Top)
             }
 
             BitAnd | BitOr | BitXor if l.lo == l.hi && r.lo == r.hi => {
@@ -965,7 +973,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 let zero = l_zero | r_zero;
                 let lo = ScalarInt::try_from_uint(one, size).unwrap();
                 let hi = ScalarInt::try_from_uint(one | !zero, size).unwrap();
-                (RL::Range(Range::new(lo, hi, signed)), RL::Top)
+                (RL::range(Range::new(lo, hi, signed)), RL::Top)
                 // FIXME: might be able to do signed optimizations
             }
 
@@ -976,7 +984,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 let zero = l_zero & r_zero;
                 let lo = ScalarInt::try_from_uint(one, size).unwrap();
                 let hi = ScalarInt::try_from_uint(one | !zero, size).unwrap();
-                (RL::Range(Range::new(lo, hi, signed)), RL::Top)
+                (RL::range(Range::new(lo, hi, signed)), RL::Top)
                 // FIXME: might be able to do signed optimizations
             }
 
@@ -987,7 +995,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 let zero = l_zero & r_zero | l_one & r_one;
                 let lo = ScalarInt::try_from_uint(one, size).unwrap();
                 let hi = ScalarInt::try_from_uint(one | !zero, size).unwrap();
-                (RL::Range(Range::new(lo, hi, signed)), RL::Top)
+                (RL::range(Range::new(lo, hi, signed)), RL::Top)
                 // FIXME: might be able to do signed optimizations
             }
 
@@ -1151,7 +1159,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         match value {
             RangeLattice::Bottom => None,
             RangeLattice::Top => None,
-            RangeLattice::Range(Range { lo, hi, .. }) => {
+            RangeLattice::Range(Range { lo, hi, .. }, _) => {
                 let lo_bits = lo.to_bits_unchecked();
                 let hi_bits = hi.to_bits_unchecked();
                 // FIXME: are assert statements allowed?
@@ -1205,7 +1213,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
                 let (result, _) = self.analysis.binary_op(&mut state_mut, *op, left, right);
 
                 // Can only constant-propagate if the range is a singleton
-                let RangeLattice::Range(range) = result else {
+                let RangeLattice::Range(range, _) = result else {
                     return;
                 };
                 if range.lo != range.hi {
@@ -1289,7 +1297,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
                 let mut state_mut = state.clone();
                 let value = self.analysis.eval_operand(discr, &mut state_mut);
 
-                if let RangeLattice::Range(Range { lo, hi, .. }) = value {
+                if let RangeLattice::Range(Range { lo, hi, .. }, _) = value {
                     // Check if the discriminant is a singleton
                     if lo == hi {
                         let bits = lo.to_bits_unchecked();
