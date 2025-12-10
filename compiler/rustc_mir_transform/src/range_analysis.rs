@@ -4,55 +4,27 @@
 // char to int conversions
 // handle isize and usize
 
-/* TESTS
-PASSING:
-binary_ops
-bool_u8_cast (can be more aggressive wtih match)
-constant_prop
-int_to_int_cast
-simple_division
-path_sensitivity
-comparison_ops
-control_flow
-range_intersection
-switch_int_opt
-nested_loops
-widening
-*/
-// FIXME: remove the allow list
-#![allow(
-    dead_code,
-    unused_imports,
-    unused_variables,
-    unreachable_code,
-    unused_mut,
-    unreachable_pub
-)]
-
 use std::assert_matches::assert_matches;
 use std::cell::RefCell;
 use std::fmt::Formatter;
 
-use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Size, TyAndLayout, VariantIdx};
-use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
-use rustc_const_eval::interpret::{
-    ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable, interp_ok,
-};
+use rustc_abi::TyAndLayout;
+use rustc_const_eval::const_eval::DummyMachine;
+use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::lattice::{FlatSet, HasBottom, HasTop};
+use rustc_mir_dataflow::lattice::{HasBottom, HasTop};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
 use rustc_mir_dataflow::{Analysis, JoinSemiLattice, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
-use tracing::{debug, debug_span, instrument};
+use tracing::debug_span;
 
 use crate::patch::MirPatch;
 
@@ -135,7 +107,7 @@ impl Range {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RangeRelation {
+enum RangeRelation {
     LeftLt,
     LeftLe,
     Overlap,
@@ -234,10 +206,6 @@ const RANGE_BOOL: RangeLattice =
 struct SwitchIntRefinement<'tcx> {
     /// The operand being switched on
     discr: Operand<'tcx>,
-    /// The place index of the discriminant
-    discr_place: PlaceIndex,
-    /// The range of the discriminant before the switch
-    discr_range: RangeLattice,
     /// The constraint
     constraint: PathConstraint,
 }
@@ -396,8 +364,6 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
         // when we have access to the state
         Some(SwitchIntRefinement {
             discr: discr.clone(),
-            discr_place,
-            discr_range: RangeLattice::Bottom,
             constraint: constraint.clone(),
         })
     }
@@ -407,7 +373,7 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
-        targets: &SwitchTargets,
+        _targets: &SwitchTargets,
     ) {
         if !state.is_reachable() {
             return;
@@ -447,7 +413,7 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
 
                 // Get the current range of the place
                 let current_range = state.get_idx(place, &self.map);
-                let RangeLattice::Range(mut place_range, _) = current_range else {
+                let RangeLattice::Range(place_range, _) = current_range else {
                     return;
                 };
 
@@ -516,7 +482,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             StatementKind::Assign(box (place, rvalue)) => {
                 self.handle_assign(*place, rvalue, state);
             }
-            StatementKind::SetDiscriminant { box place, variant_index } => {
+            StatementKind::SetDiscriminant { box place, variant_index: _ } => {
                 // FIXME: check, taken from dataflow_const_prop.rs
                 state.flood_discr(place.as_ref(), &self.map);
             }
@@ -642,7 +608,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
             Rvalue::Cast(
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
-                operand,
+                _operand,
                 _,
             ) => {
                 // FIXME: handle pointer coercions
@@ -771,7 +737,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 RangeLattice::Top
             }
 
-            Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, ty) => {
+            Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, _, _) => {
                 // Transmute and subtype casts are not handled
                 RangeLattice::Top
             }
@@ -787,7 +753,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
             Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => RangeLattice::Top,
 
-            Rvalue::Discriminant(place) => {
+            Rvalue::Discriminant(_) => {
                 RangeLattice::Top
                 // state.get_discr(place.as_ref(), &self.map)
             }
@@ -935,7 +901,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     ) -> RangeLattice {
         type RL = RangeLattice;
         let signed = range.signed;
-        let mut ecx = self.ecx.borrow_mut();
+        let ecx = self.ecx.borrow_mut();
         let type_range = self.get_type_range(layout.ty).map(RL::range).unwrap_or(RL::Top);
 
         // Performs a unary operation using ecx
@@ -952,14 +918,14 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
         use UnOp::*;
         match op {
-            UnOp::Not | UnOp::Neg => {
+            Not | Neg => {
                 if range.is_singleton() {
                     to_range(eval(range.lo, op))
                 } else {
                     type_range
                 }
             }
-            UnOp::PtrMetadata => unreachable!(),
+            PtrMetadata => unreachable!(),
         }
     }
 
@@ -1033,7 +999,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         let size = output_layout.size;
         let signed = l.signed;
 
-        let mut ecx = self.ecx.borrow_mut();
+        let ecx = self.ecx.borrow_mut();
         let cmp = RangeRelation::from_ranges(&l, &r);
         let type_range = self.get_type_range(output_layout.ty).map(RL::range).unwrap_or(RL::Top);
 
@@ -1446,7 +1412,6 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         if let (Operand::Copy(p) | Operand::Move(p), Operand::Constant(c)) = (left, right) {
             if let Some(place_idx) = self.map.find(p.as_ref()) {
                 if let Some(const_val) = c.const_.try_eval_scalar_int(self.tcx, self.typing_env) {
-                    let ty = c.const_.ty();
                     self.path_constraints.borrow_mut().insert(
                         bool_place,
                         PathConstraint::ConstantBinary {
@@ -1461,7 +1426,6 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             if let Some(place_idx) = self.map.find(p.as_ref()) {
                 if let Some(const_val) = c.const_.try_eval_scalar_int(self.tcx, self.typing_env) {
                     if let Some(flipped_op) = Self::flip_comparison(op) {
-                        let ty = c.const_.ty();
                         self.path_constraints.borrow_mut().insert(
                             bool_place,
                             PathConstraint::ConstantBinary {
@@ -1650,7 +1614,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
         location: Location,
     ) {
         match &terminator.kind {
-            TerminatorKind::Assert { cond, expected, target, unwind, msg } => {
+            TerminatorKind::Assert { cond, expected, target, .. } => {
                 // Try to evaluate the condition using range analysis
                 let cond_value = self.analysis.eval_bool(cond, state);
 
