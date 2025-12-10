@@ -45,7 +45,7 @@
       bb3: {
           StorageDead(_7);
           StorageLive(_8);
-          _8 = core::panicking::panic(const "assertion failed: x < 5") -> unwind unreachable;
+          _8 = core::panicking::panic(const "assertion failed: x < 5") -> unwind continue;
       }
   
       bb4: {

@@ -91,7 +91,7 @@
       bb3: {
           StorageDead(_8);
           StorageLive(_9);
-          _9 = core::panicking::panic(const "assertion failed: x <= 10") -> unwind unreachable;
+          _9 = core::panicking::panic(const "assertion failed: x <= 10") -> unwind continue;
       }
   
       bb4: {
@@ -116,7 +116,7 @@
       bb6: {
           StorageDead(_12);
           StorageLive(_13);
-          _13 = core::panicking::panic(const "assertion failed: x < 100") -> unwind unreachable;
+          _13 = core::panicking::panic(const "assertion failed: x < 100") -> unwind continue;
       }
   
       bb7: {
@@ -213,7 +213,7 @@
   
       bb14: {
           StorageLive(_32);
-          _32 = core::panicking::panic(const "assertion failed: and_result >= 0 && and_result <= 10") -> unwind unreachable;
+          _32 = core::panicking::panic(const "assertion failed: and_result >= 0 && and_result <= 10") -> unwind continue;
       }
   
       bb15: {
@@ -254,7 +254,7 @@
   
       bb19: {
           StorageLive(_38);
-          _38 = core::panicking::panic(const "assertion failed: or_result >= 0 && or_result <= 10") -> unwind unreachable;
+          _38 = core::panicking::panic(const "assertion failed: or_result >= 0 && or_result <= 10") -> unwind continue;
       }
   
       bb20: {
@@ -288,7 +288,7 @@
   
       bb24: {
           StorageLive(_44);
-          _44 = core::panicking::panic(const "assertion failed: xor_result >= 0 && xor_result <= 10") -> unwind unreachable;
+          _44 = core::panicking::panic(const "assertion failed: xor_result >= 0 && xor_result <= 10") -> unwind continue;
       }
   
       bb25: {

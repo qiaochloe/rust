@@ -19,7 +19,6 @@ switch_int_opt
 nested_loops
 widening
 */
-
 // FIXME: remove the allow list
 #![allow(
     dead_code,
@@ -964,7 +963,6 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         }
     }
 
-    /// Must only be run without overflows
     /// Returns val and overflow
     fn binary_op(
         &self,
@@ -973,19 +971,44 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
     ) -> (RangeLattice, RangeLattice) {
+        use BinOp::*;
         let llat = self.eval_operand(left, state);
         let rlat = self.eval_operand(right, state);
         match (llat, rlat) {
-            // Both sides are known, do the actual computation.
+            // Both sides are known, do the actual computation
             (RangeLattice::Range(l, _), RangeLattice::Range(r, _)) => {
-                let ty = left.ty(self.local_decls, self.tcx);
-                if !ty.is_integral() && !ty.is_bool() {
+                let left_ty = left.ty(self.local_decls, self.tcx);
+                let right_ty = right.ty(self.local_decls, self.tcx);
+                if !left_ty.is_integral() && !left_ty.is_bool() {
                     return (RangeLattice::Top, RangeLattice::Top);
                 }
-                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
+                if !right_ty.is_integral() && !right_ty.is_bool() {
+                    return (RangeLattice::Top, RangeLattice::Top);
+                }
+                let Ok(left_layout) = self.tcx.layout_of(self.typing_env.as_query_input(left_ty))
+                else {
                     return (RangeLattice::Top, RangeLattice::Top);
                 };
-                self.binary_interval(op, l, r, layout)
+                let Ok(right_layout) = self.tcx.layout_of(self.typing_env.as_query_input(right_ty))
+                else {
+                    return (RangeLattice::Top, RangeLattice::Top);
+                };
+
+                match op {
+                    Eq | Ne | Lt | Le | Gt | Ge => {
+                        // Output is always bool
+                        self.comp_op(op, l, r)
+                    }
+                    Add | AddWithOverflow | Sub | SubWithOverflow | Mul | MulWithOverflow | Div
+                    | BitAnd | BitOr | BitXor | Shl | Shr | Rem => {
+                        // Output type matches left type
+                        self.arith_op(op, l, r, left_layout, right_layout)
+                    }
+                    _ => {
+                        // Don't handle AddUnchecked, SubUnchecked, MulUnchecked,ShlUnchecked, ShrUnchecked
+                        (RangeLattice::Top, RangeLattice::Top)
+                    }
+                }
             }
             (RangeLattice::Bottom, _) | (_, RangeLattice::Bottom) => {
                 (RangeLattice::Bottom, RangeLattice::Bottom)
@@ -995,25 +1018,29 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     }
 
     /// Returns (value_range, overflow_range)
-    fn binary_interval(
+    fn arith_op(
         &self,
         op: BinOp,
         l: Range,
         r: Range,
-        layout: TyAndLayout<'tcx, Ty<'tcx>>,
+        left_layout: TyAndLayout<'tcx, Ty<'tcx>>,
+        right_layout: TyAndLayout<'tcx, Ty<'tcx>>,
     ) -> (RangeLattice, RangeLattice) {
+        use BinOp::*;
         type RL = RangeLattice;
-        let size = layout.size;
+
+        let output_layout = left_layout;
+        let size = output_layout.size;
         let signed = l.signed;
 
         let mut ecx = self.ecx.borrow_mut();
         let cmp = RangeRelation::from_ranges(&l, &r);
-        let type_range = self.get_type_range(layout.ty).map(RL::range).unwrap_or(RL::Top);
+        let type_range = self.get_type_range(output_layout.ty).map(RL::range).unwrap_or(RL::Top);
 
         // Performs a binary operation using ecx
         let eval_ecx = |l: ScalarInt, r: ScalarInt, op: BinOp| -> Option<ImmTy<'_>> {
-            let left_imm = ImmTy::from_scalar_int(l, layout);
-            let right_imm = ImmTy::from_scalar_int(r, layout);
+            let left_imm = ImmTy::from_scalar_int(l, left_layout);
+            let right_imm = ImmTy::from_scalar_int(r, right_layout);
             ecx.binary_op(op, &left_imm, &right_imm).discard_err()
         };
 
@@ -1042,7 +1069,6 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             }
         };
 
-        use BinOp::*;
         match op {
             Add | AddWithOverflow if !signed => {
                 // (l.lo + r.lo, l.hi + r.hi)
@@ -1175,6 +1201,18 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 // FIXME: might be able to do signed optimizations
             }
 
+            // FIXME: Shl, Shr
+            Shl | Shr => (type_range, RL::Top),
+            _ => unreachable!(),
+        }
+    }
+
+    fn comp_op(&self, op: BinOp, l: Range, r: Range) -> (RangeLattice, RangeLattice) {
+        use BinOp::*;
+        type RL = RangeLattice;
+        let cmp = RangeRelation::from_ranges(&l, &r);
+
+        match op {
             Eq => {
                 if l.is_singleton() && r.is_singleton() && l.lo == r.lo {
                     return (RANGE_TRUE, RL::Top);
@@ -1231,9 +1269,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                     (RANGE_BOOL, RL::Top)
                 }
             }
-
-            // FIXME: Shl, Shr
-            _ => (type_range, RL::Top),
+            _ => unreachable!(),
         }
     }
 
@@ -1701,4 +1737,3 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
         }
     }
 }
-

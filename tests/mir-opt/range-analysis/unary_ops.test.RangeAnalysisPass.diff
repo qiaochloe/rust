@@ -147,7 +147,7 @@
   
       bb5: {
           StorageLive(_19);
-          _19 = core::panicking::panic(const "assertion failed: z >= 0 && z <= 2") -> unwind unreachable;
+          _19 = core::panicking::panic(const "assertion failed: z >= 0 && z <= 2") -> unwind continue;
       }
   
       bb6: {
@@ -209,7 +209,7 @@
   
       bb10: {
           StorageLive(_27);
-          _27 = core::panicking::panic(const "assertion failed: z >= 1 && z <= 2") -> unwind unreachable;
+          _27 = core::panicking::panic(const "assertion failed: z >= 1 && z <= 2") -> unwind continue;
       }
   
       bb11: {
@@ -253,7 +253,7 @@
   
       bb15: {
           StorageLive(_40);
-          _40 = core::panicking::panic(const "assertion failed: z >= -128 && z <= 127") -> unwind unreachable;
+          _40 = core::panicking::panic(const "assertion failed: z >= -128 && z <= 127") -> unwind continue;
       }
   }
   

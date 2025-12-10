@@ -5,7 +5,7 @@ fn test(x: u8, y: u8, x_signed: i8, y_signed: i8, shift: u8) {
     // CHECK-LABEL: fn test(
     // x is [0, 255], y is [0, 255]
 
-    // Arithmetic ops
+    // Unsigned arithmetic
     let sum = x + y;
     let diff = x - y;
     let prod = x * y;
@@ -25,7 +25,7 @@ fn test(x: u8, y: u8, x_signed: i8, y_signed: i8, shift: u8) {
     assert!(diff >= -128 && diff <= 127);
     assert!(prod >= -128 && prod <= 127);
 
-    // Bitwise
+    // Unsigned bitwise
     let and_result = x & y;
     let or_result = x | y;
     let xor_result = x ^ y;
@@ -34,14 +34,56 @@ fn test(x: u8, y: u8, x_signed: i8, y_signed: i8, shift: u8) {
     assert!(or_result >= 0 && or_result <= 255);
     assert!(xor_result >= 0 && xor_result <= 255);
 
-    // Shift ops
+    // Signed bitwise
+    let and_result = x_signed & y_signed;
+    let or_result = x_signed | y_signed;
+    let xor_result = x_signed ^ y_signed;
+
+    assert!(and_result >= -128 && and_result <= 127);
+    assert!(or_result >= -128 && or_result <= 127);
+    assert!(xor_result >= -128 && xor_result <= 127);
+
+    // Unsigned shift
     let shl_result = x << shift;
     let shr_result = x >> shift;
-    let shl_result2 = (y as u8) << shift;
-    let shr_result2 = (y as u8) >> shift;
 
     assert!(shl_result >= 0 && shl_result <= 255);
     assert!(shr_result >= 0 && shr_result <= 255);
-    assert!(shl_result2 >= 0 && shl_result2 <= 1);
-    assert!(shr_result2 >= 0 && shr_result2 <= 1);
+
+    // Signed shift
+    let shl_result = x_signed << shift;
+    let shr_result = x_signed >> shift;
+
+    assert!(shl_result >= -128 && shl_result <= 127);
+    assert!(shr_result >= -128 && shr_result <= 127);
+
+    // Unsigned comparison
+    let eq_result = (x == y) as u8;
+    let ne_result = (x != y) as u8;
+    let lt_result = (x < y) as u8;
+    let le_result = (x <= y) as u8;
+    let gt_result = (x > y) as u8;
+    let ge_result = (x >= y) as u8;
+
+    assert!(eq_result >= 0 && eq_result <= 1);
+    assert!(ne_result >= 0 && ne_result <= 1);
+    assert!(lt_result >= 0 && lt_result <= 1);
+    assert!(le_result >= 0 && le_result <= 1);
+    assert!(gt_result >= 0 && gt_result <= 1);
+    assert!(ge_result >= 0 && ge_result <= 1);
+
+    // Signed comparison
+    let eq_result = (x_signed == y_signed) as u8;
+    let ne_result = (x_signed != y_signed) as u8;
+    let lt_result = (x_signed < y_signed) as u8;
+    let le_result = (x_signed <= y_signed) as u8;
+    let gt_result = (x_signed > y_signed) as u8;
+    let ge_result = (x_signed >= y_signed) as u8;
+
+    assert!(eq_result >= 0 && eq_result <= 1);
+    assert!(ne_result >= 0 && ne_result <= 1);
+    assert!(lt_result >= 0 && lt_result <= 1);
+    assert!(le_result >= 0 && le_result <= 1);
+    assert!(gt_result >= 0 && gt_result <= 1);
+    assert!(ge_result >= 0 && ge_result <= 1);
 }

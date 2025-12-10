@@ -92,38 +92,170 @@
       let mut _96: bool;
       let mut _97: u8;
       let mut _98: !;
-      let mut _100: u8;
-      let mut _101: u8;
-      let mut _103: u8;
-      let mut _104: u8;
-      let mut _106: u8;
-      let mut _107: u8;
-      let mut _109: u8;
-      let mut _110: u8;
-      let _111: ();
-      let mut _112: bool;
-      let mut _113: u8;
-      let mut _114: bool;
-      let mut _115: u8;
-      let mut _116: !;
-      let _117: ();
-      let mut _118: bool;
-      let mut _119: u8;
-      let mut _120: bool;
-      let mut _121: u8;
-      let mut _122: !;
-      let _123: ();
-      let mut _124: bool;
-      let mut _125: u8;
-      let mut _126: bool;
+      let mut _100: i8;
+      let mut _101: i8;
+      let mut _103: i8;
+      let mut _104: i8;
+      let mut _106: i8;
+      let mut _107: i8;
+      let _108: ();
+      let mut _109: bool;
+      let mut _110: i8;
+      let mut _111: bool;
+      let mut _112: i8;
+      let mut _113: !;
+      let _114: ();
+      let mut _115: bool;
+      let mut _116: i8;
+      let mut _117: bool;
+      let mut _118: i8;
+      let mut _119: !;
+      let _120: ();
+      let mut _121: bool;
+      let mut _122: i8;
+      let mut _123: bool;
+      let mut _124: i8;
+      let mut _125: !;
       let mut _127: u8;
-      let mut _128: !;
-      let _129: ();
-      let mut _130: bool;
+      let mut _128: u8;
+      let mut _130: u8;
       let mut _131: u8;
-      let mut _132: bool;
-      let mut _133: u8;
-      let mut _134: !;
+      let _132: ();
+      let mut _133: bool;
+      let mut _134: u8;
+      let mut _135: bool;
+      let mut _136: u8;
+      let mut _137: !;
+      let _138: ();
+      let mut _139: bool;
+      let mut _140: u8;
+      let mut _141: bool;
+      let mut _142: u8;
+      let mut _143: !;
+      let mut _145: i8;
+      let mut _146: u8;
+      let mut _148: i8;
+      let mut _149: u8;
+      let _150: ();
+      let mut _151: bool;
+      let mut _152: i8;
+      let mut _153: bool;
+      let mut _154: i8;
+      let mut _155: !;
+      let _156: ();
+      let mut _157: bool;
+      let mut _158: i8;
+      let mut _159: bool;
+      let mut _160: i8;
+      let mut _161: !;
+      let mut _163: bool;
+      let mut _164: u8;
+      let mut _165: u8;
+      let mut _167: bool;
+      let mut _168: u8;
+      let mut _169: u8;
+      let mut _171: bool;
+      let mut _172: u8;
+      let mut _173: u8;
+      let mut _175: bool;
+      let mut _176: u8;
+      let mut _177: u8;
+      let mut _179: bool;
+      let mut _180: u8;
+      let mut _181: u8;
+      let mut _183: bool;
+      let mut _184: u8;
+      let mut _185: u8;
+      let _186: ();
+      let mut _187: bool;
+      let mut _188: u8;
+      let mut _189: bool;
+      let mut _190: u8;
+      let mut _191: !;
+      let _192: ();
+      let mut _193: bool;
+      let mut _194: u8;
+      let mut _195: bool;
+      let mut _196: u8;
+      let mut _197: !;
+      let _198: ();
+      let mut _199: bool;
+      let mut _200: u8;
+      let mut _201: bool;
+      let mut _202: u8;
+      let mut _203: !;
+      let _204: ();
+      let mut _205: bool;
+      let mut _206: u8;
+      let mut _207: bool;
+      let mut _208: u8;
+      let mut _209: !;
+      let _210: ();
+      let mut _211: bool;
+      let mut _212: u8;
+      let mut _213: bool;
+      let mut _214: u8;
+      let mut _215: !;
+      let _216: ();
+      let mut _217: bool;
+      let mut _218: u8;
+      let mut _219: bool;
+      let mut _220: u8;
+      let mut _221: !;
+      let mut _223: bool;
+      let mut _224: i8;
+      let mut _225: i8;
+      let mut _227: bool;
+      let mut _228: i8;
+      let mut _229: i8;
+      let mut _231: bool;
+      let mut _232: i8;
+      let mut _233: i8;
+      let mut _235: bool;
+      let mut _236: i8;
+      let mut _237: i8;
+      let mut _239: bool;
+      let mut _240: i8;
+      let mut _241: i8;
+      let mut _243: bool;
+      let mut _244: i8;
+      let mut _245: i8;
+      let _246: ();
+      let mut _247: bool;
+      let mut _248: u8;
+      let mut _249: bool;
+      let mut _250: u8;
+      let mut _251: !;
+      let _252: ();
+      let mut _253: bool;
+      let mut _254: u8;
+      let mut _255: bool;
+      let mut _256: u8;
+      let mut _257: !;
+      let _258: ();
+      let mut _259: bool;
+      let mut _260: u8;
+      let mut _261: bool;
+      let mut _262: u8;
+      let mut _263: !;
+      let _264: ();
+      let mut _265: bool;
+      let mut _266: u8;
+      let mut _267: bool;
+      let mut _268: u8;
+      let mut _269: !;
+      let _270: ();
+      let mut _271: bool;
+      let mut _272: u8;
+      let mut _273: bool;
+      let mut _274: u8;
+      let mut _275: !;
+      let _276: ();
+      let mut _277: bool;
+      let mut _278: u8;
+      let mut _279: bool;
+      let mut _280: u8;
+      let mut _281: !;
       scope 1 {
           debug sum => _6;
           let _9: u8;
@@ -153,18 +285,78 @@
                                           let _78: u8;
                                           scope 10 {
                                               debug xor_result => _78;
-                                              let _99: u8;
+                                              let _99: i8;
                                               scope 11 {
-                                                  debug shl_result => _99;
-                                                  let _102: u8;
+                                                  debug and_result => _99;
+                                                  let _102: i8;
                                                   scope 12 {
-                                                      debug shr_result => _102;
-                                                      let _105: u8;
+                                                      debug or_result => _102;
+                                                      let _105: i8;
                                                       scope 13 {
-                                                          debug shl_result2 => _105;
-                                                          let _108: u8;
+                                                          debug xor_result => _105;
+                                                          let _126: u8;
                                                           scope 14 {
-                                                              debug shr_result2 => _108;
+                                                              debug shl_result => _126;
+                                                              let _129: u8;
+                                                              scope 15 {
+                                                                  debug shr_result => _129;
+                                                                  let _144: i8;
+                                                                  scope 16 {
+                                                                      debug shl_result => _144;
+                                                                      let _147: i8;
+                                                                      scope 17 {
+                                                                          debug shr_result => _147;
+                                                                          let _162: u8;
+                                                                          scope 18 {
+                                                                              debug eq_result => _162;
+                                                                              let _166: u8;
+                                                                              scope 19 {
+                                                                                  debug ne_result => _166;
+                                                                                  let _170: u8;
+                                                                                  scope 20 {
+                                                                                      debug lt_result => _170;
+                                                                                      let _174: u8;
+                                                                                      scope 21 {
+                                                                                          debug le_result => _174;
+                                                                                          let _178: u8;
+                                                                                          scope 22 {
+                                                                                              debug gt_result => _178;
+                                                                                              let _182: u8;
+                                                                                              scope 23 {
+                                                                                                  debug ge_result => _182;
+                                                                                                  let _222: u8;
+                                                                                                  scope 24 {
+                                                                                                      debug eq_result => _222;
+                                                                                                      let _226: u8;
+                                                                                                      scope 25 {
+                                                                                                          debug ne_result => _226;
+                                                                                                          let _230: u8;
+                                                                                                          scope 26 {
+                                                                                                              debug lt_result => _230;
+                                                                                                              let _234: u8;
+                                                                                                              scope 27 {
+                                                                                                                  debug le_result => _234;
+                                                                                                                  let _238: u8;
+                                                                                                                  scope 28 {
+                                                                                                                      debug gt_result => _238;
+                                                                                                                      let _242: u8;
+                                                                                                                      scope 29 {
+                                                                                                                          debug ge_result => _242;
+                                                                                                                      }
+                                                                                                                  }
+                                                                                                              }
+                                                                                                          }
+                                                                                                      }
+                                                                                                  }
+                                                                                              }
+                                                                                          }
+                                                                                      }
+                                                                                  }
+                                                                              }
+                                                                          }
+                                                                      }
+                                                                  }
+                                                              }
                                                           }
                                                       }
                                                   }
@@ -219,8 +411,11 @@
           _18 = copy _1;
           StorageLive(_19);
           _19 = copy _2;
-          _20 = Eq(copy _19, const 0_u8);
-          assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb2, unwind unreachable];
+-         _20 = Eq(copy _19, const 0_u8);
+-         assert(!move _20, "attempt to divide `{}` by zero", copy _18) -> [success: bb2, unwind unreachable];
++         _20 = const false;
++         nop;
++         goto -> bb2;
       }
   
       bb2: {
@@ -320,8 +515,11 @@
           StorageLive(_34);
           StorageLive(_35);
           _35 = copy _15;
-          _34 = Ge(move _35, const 0_u8);
-          switchInt(move _34) -> [0: bb16, otherwise: bb15];
+-         _34 = Ge(move _35, const 0_u8);
+-         switchInt(move _34) -> [0: bb16, otherwise: bb15];
++         _34 = const true;
++         nop;
++         goto -> bb15;
       }
   
       bb13: {
@@ -339,8 +537,11 @@
           StorageLive(_36);
           StorageLive(_37);
           _37 = copy _15;
-          _36 = Le(move _37, const u8::MAX);
-          switchInt(move _36) -> [0: bb18, otherwise: bb17];
+-         _36 = Le(move _37, const u8::MAX);
+-         switchInt(move _36) -> [0: bb18, otherwise: bb17];
++         _36 = const true;
++         nop;
++         goto -> bb17;
       }
   
       bb16: {
@@ -712,43 +913,35 @@
           StorageDead(_93);
           StorageLive(_99);
           StorageLive(_100);
-          _100 = copy _1;
+          _100 = copy _3;
           StorageLive(_101);
-          _101 = copy _5;
-          _99 = Shl(move _100, move _101);
+          _101 = copy _4;
+          _99 = BitAnd(move _100, move _101);
           StorageDead(_101);
           StorageDead(_100);
           StorageLive(_102);
           StorageLive(_103);
-          _103 = copy _1;
+          _103 = copy _3;
           StorageLive(_104);
-          _104 = copy _5;
-          _102 = Shr(move _103, move _104);
+          _104 = copy _4;
+          _102 = BitOr(move _103, move _104);
           StorageDead(_104);
           StorageDead(_103);
           StorageLive(_105);
           StorageLive(_106);
-          _106 = copy _2;
+          _106 = copy _3;
           StorageLive(_107);
-          _107 = copy _5;
-          _105 = Shl(move _106, move _107);
+          _107 = copy _4;
+          _105 = BitXor(move _106, move _107);
           StorageDead(_107);
           StorageDead(_106);
           StorageLive(_108);
           StorageLive(_109);
-          _109 = copy _2;
           StorageLive(_110);
-          _110 = copy _5;
-          _108 = Shr(move _109, move _110);
-          StorageDead(_110);
-          StorageDead(_109);
-          StorageLive(_111);
-          StorageLive(_112);
-          StorageLive(_113);
-          _113 = copy _99;
--         _112 = Ge(move _113, const 0_u8);
--         switchInt(move _112) -> [0: bb56, otherwise: bb55];
-+         _112 = const true;
+          _110 = copy _99;
+-         _109 = Ge(move _110, const i8::MIN);
+-         switchInt(move _109) -> [0: bb56, otherwise: bb55];
++         _109 = const true;
 +         nop;
 +         goto -> bb55;
       }
@@ -764,156 +957,1001 @@
       }
   
       bb55: {
-          StorageDead(_113);
-          StorageLive(_114);
-          StorageLive(_115);
-          _115 = copy _99;
--         _114 = Le(move _115, const u8::MAX);
--         switchInt(move _114) -> [0: bb58, otherwise: bb57];
-+         _114 = const true;
+          StorageDead(_110);
+          StorageLive(_111);
+          StorageLive(_112);
+          _112 = copy _99;
+-         _111 = Le(move _112, const i8::MAX);
+-         switchInt(move _111) -> [0: bb58, otherwise: bb57];
++         _111 = const true;
 +         nop;
 +         goto -> bb57;
       }
   
       bb56: {
-          StorageDead(_113);
+          StorageDead(_110);
           goto -> bb59;
       }
   
       bb57: {
-          StorageDead(_115);
-          _111 = const ();
-          StorageDead(_114);
           StorageDead(_112);
+          _108 = const ();
           StorageDead(_111);
-          StorageLive(_117);
-          StorageLive(_118);
-          StorageLive(_119);
-          _119 = copy _102;
--         _118 = Ge(move _119, const 0_u8);
--         switchInt(move _118) -> [0: bb61, otherwise: bb60];
-+         _118 = const true;
+          StorageDead(_109);
+          StorageDead(_108);
+          StorageLive(_114);
+          StorageLive(_115);
+          StorageLive(_116);
+          _116 = copy _102;
+-         _115 = Ge(move _116, const i8::MIN);
+-         switchInt(move _115) -> [0: bb61, otherwise: bb60];
++         _115 = const true;
 +         nop;
 +         goto -> bb60;
       }
   
       bb58: {
-          StorageDead(_115);
+          StorageDead(_112);
           goto -> bb59;
       }
   
       bb59: {
-          StorageLive(_116);
-          _116 = core::panicking::panic(const "assertion failed: shl_result >= 0 && shl_result <= 255") -> unwind unreachable;
+          StorageLive(_113);
+          _113 = core::panicking::panic(const "assertion failed: and_result >= -128 && and_result <= 127") -> unwind unreachable;
       }
   
       bb60: {
-          StorageDead(_119);
-          StorageLive(_120);
-          StorageLive(_121);
-          _121 = copy _102;
--         _120 = Le(move _121, const u8::MAX);
--         switchInt(move _120) -> [0: bb63, otherwise: bb62];
-+         _120 = const true;
+          StorageDead(_116);
+          StorageLive(_117);
+          StorageLive(_118);
+          _118 = copy _102;
+-         _117 = Le(move _118, const i8::MAX);
+-         switchInt(move _117) -> [0: bb63, otherwise: bb62];
++         _117 = const true;
 +         nop;
 +         goto -> bb62;
       }
   
       bb61: {
-          StorageDead(_119);
+          StorageDead(_116);
           goto -> bb64;
       }
   
       bb62: {
-          StorageDead(_121);
-          _117 = const ();
-          StorageDead(_120);
           StorageDead(_118);
+          _114 = const ();
           StorageDead(_117);
-          StorageLive(_123);
-          StorageLive(_124);
-          StorageLive(_125);
-          _125 = copy _105;
--         _124 = Ge(move _125, const 0_u8);
--         switchInt(move _124) -> [0: bb66, otherwise: bb65];
-+         _124 = const true;
+          StorageDead(_115);
+          StorageDead(_114);
+          StorageLive(_120);
+          StorageLive(_121);
+          StorageLive(_122);
+          _122 = copy _105;
+-         _121 = Ge(move _122, const i8::MIN);
+-         switchInt(move _121) -> [0: bb66, otherwise: bb65];
++         _121 = const true;
 +         nop;
 +         goto -> bb65;
       }
   
       bb63: {
-          StorageDead(_121);
+          StorageDead(_118);
           goto -> bb64;
       }
   
       bb64: {
-          StorageLive(_122);
-          _122 = core::panicking::panic(const "assertion failed: shr_result >= 0 && shr_result <= 255") -> unwind unreachable;
+          StorageLive(_119);
+          _119 = core::panicking::panic(const "assertion failed: or_result >= -128 && or_result <= 127") -> unwind unreachable;
       }
   
       bb65: {
-          StorageDead(_125);
-          StorageLive(_126);
-          StorageLive(_127);
-          _127 = copy _105;
-          _126 = Le(move _127, const 1_u8);
-          switchInt(move _126) -> [0: bb68, otherwise: bb67];
+          StorageDead(_122);
+          StorageLive(_123);
+          StorageLive(_124);
+          _124 = copy _105;
+-         _123 = Le(move _124, const i8::MAX);
+-         switchInt(move _123) -> [0: bb68, otherwise: bb67];
++         _123 = const true;
++         nop;
++         goto -> bb67;
       }
   
       bb66: {
-          StorageDead(_125);
+          StorageDead(_122);
           goto -> bb69;
       }
   
       bb67: {
-          StorageDead(_127);
-          _123 = const ();
-          StorageDead(_126);
           StorageDead(_124);
+          _120 = const ();
           StorageDead(_123);
+          StorageDead(_121);
+          StorageDead(_120);
+          StorageLive(_126);
+          StorageLive(_127);
+          _127 = copy _1;
+          StorageLive(_128);
+          _128 = copy _5;
+          _126 = Shl(move _127, move _128);
+          StorageDead(_128);
+          StorageDead(_127);
           StorageLive(_129);
           StorageLive(_130);
+          _130 = copy _1;
           StorageLive(_131);
-          _131 = copy _108;
--         _130 = Ge(move _131, const 0_u8);
--         switchInt(move _130) -> [0: bb71, otherwise: bb70];
-+         _130 = const true;
+          _131 = copy _5;
+          _129 = Shr(move _130, move _131);
+          StorageDead(_131);
+          StorageDead(_130);
+          StorageLive(_132);
+          StorageLive(_133);
+          StorageLive(_134);
+          _134 = copy _126;
+-         _133 = Ge(move _134, const 0_u8);
+-         switchInt(move _133) -> [0: bb71, otherwise: bb70];
++         _133 = const true;
 +         nop;
 +         goto -> bb70;
       }
   
       bb68: {
-          StorageDead(_127);
+          StorageDead(_124);
           goto -> bb69;
       }
   
       bb69: {
-          StorageLive(_128);
-          _128 = core::panicking::panic(const "assertion failed: shl_result2 >= 0 && shl_result2 <= 1") -> unwind unreachable;
+          StorageLive(_125);
+          _125 = core::panicking::panic(const "assertion failed: xor_result >= -128 && xor_result <= 127") -> unwind unreachable;
       }
   
       bb70: {
-          StorageDead(_131);
-          StorageLive(_132);
-          StorageLive(_133);
-          _133 = copy _108;
-          _132 = Le(move _133, const 1_u8);
-          switchInt(move _132) -> [0: bb73, otherwise: bb72];
+          StorageDead(_134);
+          StorageLive(_135);
+          StorageLive(_136);
+          _136 = copy _126;
+-         _135 = Le(move _136, const u8::MAX);
+-         switchInt(move _135) -> [0: bb73, otherwise: bb72];
++         _135 = const true;
++         nop;
++         goto -> bb72;
       }
   
       bb71: {
-          StorageDead(_131);
+          StorageDead(_134);
           goto -> bb74;
       }
   
       bb72: {
+          StorageDead(_136);
+          _132 = const ();
+          StorageDead(_135);
           StorageDead(_133);
-          _129 = const ();
           StorageDead(_132);
-          StorageDead(_130);
-          StorageDead(_129);
+          StorageLive(_138);
+          StorageLive(_139);
+          StorageLive(_140);
+          _140 = copy _129;
+-         _139 = Ge(move _140, const 0_u8);
+-         switchInt(move _139) -> [0: bb76, otherwise: bb75];
++         _139 = const true;
++         nop;
++         goto -> bb75;
+      }
+  
+      bb73: {
+          StorageDead(_136);
+          goto -> bb74;
+      }
+  
+      bb74: {
+          StorageLive(_137);
+          _137 = core::panicking::panic(const "assertion failed: shl_result >= 0 && shl_result <= 255") -> unwind unreachable;
+      }
+  
+      bb75: {
+          StorageDead(_140);
+          StorageLive(_141);
+          StorageLive(_142);
+          _142 = copy _129;
+-         _141 = Le(move _142, const u8::MAX);
+-         switchInt(move _141) -> [0: bb78, otherwise: bb77];
++         _141 = const true;
++         nop;
++         goto -> bb77;
+      }
+  
+      bb76: {
+          StorageDead(_140);
+          goto -> bb79;
+      }
+  
+      bb77: {
+          StorageDead(_142);
+          _138 = const ();
+          StorageDead(_141);
+          StorageDead(_139);
+          StorageDead(_138);
+          StorageLive(_144);
+          StorageLive(_145);
+          _145 = copy _3;
+          StorageLive(_146);
+          _146 = copy _5;
+          _144 = Shl(move _145, move _146);
+          StorageDead(_146);
+          StorageDead(_145);
+          StorageLive(_147);
+          StorageLive(_148);
+          _148 = copy _3;
+          StorageLive(_149);
+          _149 = copy _5;
+          _147 = Shr(move _148, move _149);
+          StorageDead(_149);
+          StorageDead(_148);
+          StorageLive(_150);
+          StorageLive(_151);
+          StorageLive(_152);
+          _152 = copy _144;
+-         _151 = Ge(move _152, const i8::MIN);
+-         switchInt(move _151) -> [0: bb81, otherwise: bb80];
++         _151 = const true;
++         nop;
++         goto -> bb80;
+      }
+  
+      bb78: {
+          StorageDead(_142);
+          goto -> bb79;
+      }
+  
+      bb79: {
+          StorageLive(_143);
+          _143 = core::panicking::panic(const "assertion failed: shr_result >= 0 && shr_result <= 255") -> unwind unreachable;
+      }
+  
+      bb80: {
+          StorageDead(_152);
+          StorageLive(_153);
+          StorageLive(_154);
+          _154 = copy _144;
+-         _153 = Le(move _154, const i8::MAX);
+-         switchInt(move _153) -> [0: bb83, otherwise: bb82];
++         _153 = const true;
++         nop;
++         goto -> bb82;
+      }
+  
+      bb81: {
+          StorageDead(_152);
+          goto -> bb84;
+      }
+  
+      bb82: {
+          StorageDead(_154);
+          _150 = const ();
+          StorageDead(_153);
+          StorageDead(_151);
+          StorageDead(_150);
+          StorageLive(_156);
+          StorageLive(_157);
+          StorageLive(_158);
+          _158 = copy _147;
+-         _157 = Ge(move _158, const i8::MIN);
+-         switchInt(move _157) -> [0: bb86, otherwise: bb85];
++         _157 = const true;
++         nop;
++         goto -> bb85;
+      }
+  
+      bb83: {
+          StorageDead(_154);
+          goto -> bb84;
+      }
+  
+      bb84: {
+          StorageLive(_155);
+          _155 = core::panicking::panic(const "assertion failed: shl_result >= -128 && shl_result <= 127") -> unwind unreachable;
+      }
+  
+      bb85: {
+          StorageDead(_158);
+          StorageLive(_159);
+          StorageLive(_160);
+          _160 = copy _147;
+-         _159 = Le(move _160, const i8::MAX);
+-         switchInt(move _159) -> [0: bb88, otherwise: bb87];
++         _159 = const true;
++         nop;
++         goto -> bb87;
+      }
+  
+      bb86: {
+          StorageDead(_158);
+          goto -> bb89;
+      }
+  
+      bb87: {
+          StorageDead(_160);
+          _156 = const ();
+          StorageDead(_159);
+          StorageDead(_157);
+          StorageDead(_156);
+          StorageLive(_162);
+          StorageLive(_163);
+          StorageLive(_164);
+          _164 = copy _1;
+          StorageLive(_165);
+          _165 = copy _2;
+          _163 = Eq(move _164, move _165);
+          StorageDead(_165);
+          StorageDead(_164);
+          _162 = move _163 as u8 (IntToInt);
+          StorageDead(_163);
+          StorageLive(_166);
+          StorageLive(_167);
+          StorageLive(_168);
+          _168 = copy _1;
+          StorageLive(_169);
+          _169 = copy _2;
+          _167 = Ne(move _168, move _169);
+          StorageDead(_169);
+          StorageDead(_168);
+          _166 = move _167 as u8 (IntToInt);
+          StorageDead(_167);
+          StorageLive(_170);
+          StorageLive(_171);
+          StorageLive(_172);
+          _172 = copy _1;
+          StorageLive(_173);
+          _173 = copy _2;
+          _171 = Lt(move _172, move _173);
+          StorageDead(_173);
+          StorageDead(_172);
+          _170 = move _171 as u8 (IntToInt);
+          StorageDead(_171);
+          StorageLive(_174);
+          StorageLive(_175);
+          StorageLive(_176);
+          _176 = copy _1;
+          StorageLive(_177);
+          _177 = copy _2;
+          _175 = Le(move _176, move _177);
+          StorageDead(_177);
+          StorageDead(_176);
+          _174 = move _175 as u8 (IntToInt);
+          StorageDead(_175);
+          StorageLive(_178);
+          StorageLive(_179);
+          StorageLive(_180);
+          _180 = copy _1;
+          StorageLive(_181);
+          _181 = copy _2;
+          _179 = Gt(move _180, move _181);
+          StorageDead(_181);
+          StorageDead(_180);
+          _178 = move _179 as u8 (IntToInt);
+          StorageDead(_179);
+          StorageLive(_182);
+          StorageLive(_183);
+          StorageLive(_184);
+          _184 = copy _1;
+          StorageLive(_185);
+          _185 = copy _2;
+          _183 = Ge(move _184, move _185);
+          StorageDead(_185);
+          StorageDead(_184);
+          _182 = move _183 as u8 (IntToInt);
+          StorageDead(_183);
+          StorageLive(_186);
+          StorageLive(_187);
+          StorageLive(_188);
+          _188 = copy _162;
+-         _187 = Ge(move _188, const 0_u8);
+-         switchInt(move _187) -> [0: bb91, otherwise: bb90];
++         _187 = const true;
++         nop;
++         goto -> bb90;
+      }
+  
+      bb88: {
+          StorageDead(_160);
+          goto -> bb89;
+      }
+  
+      bb89: {
+          StorageLive(_161);
+          _161 = core::panicking::panic(const "assertion failed: shr_result >= -128 && shr_result <= 127") -> unwind unreachable;
+      }
+  
+      bb90: {
+          StorageDead(_188);
+          StorageLive(_189);
+          StorageLive(_190);
+          _190 = copy _162;
+-         _189 = Le(move _190, const 1_u8);
+-         switchInt(move _189) -> [0: bb93, otherwise: bb92];
++         _189 = const true;
++         nop;
++         goto -> bb92;
+      }
+  
+      bb91: {
+          StorageDead(_188);
+          goto -> bb94;
+      }
+  
+      bb92: {
+          StorageDead(_190);
+          _186 = const ();
+          StorageDead(_189);
+          StorageDead(_187);
+          StorageDead(_186);
+          StorageLive(_192);
+          StorageLive(_193);
+          StorageLive(_194);
+          _194 = copy _166;
+-         _193 = Ge(move _194, const 0_u8);
+-         switchInt(move _193) -> [0: bb96, otherwise: bb95];
++         _193 = const true;
++         nop;
++         goto -> bb95;
+      }
+  
+      bb93: {
+          StorageDead(_190);
+          goto -> bb94;
+      }
+  
+      bb94: {
+          StorageLive(_191);
+          _191 = core::panicking::panic(const "assertion failed: eq_result >= 0 && eq_result <= 1") -> unwind unreachable;
+      }
+  
+      bb95: {
+          StorageDead(_194);
+          StorageLive(_195);
+          StorageLive(_196);
+          _196 = copy _166;
+-         _195 = Le(move _196, const 1_u8);
+-         switchInt(move _195) -> [0: bb98, otherwise: bb97];
++         _195 = const true;
++         nop;
++         goto -> bb97;
+      }
+  
+      bb96: {
+          StorageDead(_194);
+          goto -> bb99;
+      }
+  
+      bb97: {
+          StorageDead(_196);
+          _192 = const ();
+          StorageDead(_195);
+          StorageDead(_193);
+          StorageDead(_192);
+          StorageLive(_198);
+          StorageLive(_199);
+          StorageLive(_200);
+          _200 = copy _170;
+-         _199 = Ge(move _200, const 0_u8);
+-         switchInt(move _199) -> [0: bb101, otherwise: bb100];
++         _199 = const true;
++         nop;
++         goto -> bb100;
+      }
+  
+      bb98: {
+          StorageDead(_196);
+          goto -> bb99;
+      }
+  
+      bb99: {
+          StorageLive(_197);
+          _197 = core::panicking::panic(const "assertion failed: ne_result >= 0 && ne_result <= 1") -> unwind unreachable;
+      }
+  
+      bb100: {
+          StorageDead(_200);
+          StorageLive(_201);
+          StorageLive(_202);
+          _202 = copy _170;
+-         _201 = Le(move _202, const 1_u8);
+-         switchInt(move _201) -> [0: bb103, otherwise: bb102];
++         _201 = const true;
++         nop;
++         goto -> bb102;
+      }
+  
+      bb101: {
+          StorageDead(_200);
+          goto -> bb104;
+      }
+  
+      bb102: {
+          StorageDead(_202);
+          _198 = const ();
+          StorageDead(_201);
+          StorageDead(_199);
+          StorageDead(_198);
+          StorageLive(_204);
+          StorageLive(_205);
+          StorageLive(_206);
+          _206 = copy _174;
+-         _205 = Ge(move _206, const 0_u8);
+-         switchInt(move _205) -> [0: bb106, otherwise: bb105];
++         _205 = const true;
++         nop;
++         goto -> bb105;
+      }
+  
+      bb103: {
+          StorageDead(_202);
+          goto -> bb104;
+      }
+  
+      bb104: {
+          StorageLive(_203);
+          _203 = core::panicking::panic(const "assertion failed: lt_result >= 0 && lt_result <= 1") -> unwind unreachable;
+      }
+  
+      bb105: {
+          StorageDead(_206);
+          StorageLive(_207);
+          StorageLive(_208);
+          _208 = copy _174;
+-         _207 = Le(move _208, const 1_u8);
+-         switchInt(move _207) -> [0: bb108, otherwise: bb107];
++         _207 = const true;
++         nop;
++         goto -> bb107;
+      }
+  
+      bb106: {
+          StorageDead(_206);
+          goto -> bb109;
+      }
+  
+      bb107: {
+          StorageDead(_208);
+          _204 = const ();
+          StorageDead(_207);
+          StorageDead(_205);
+          StorageDead(_204);
+          StorageLive(_210);
+          StorageLive(_211);
+          StorageLive(_212);
+          _212 = copy _178;
+-         _211 = Ge(move _212, const 0_u8);
+-         switchInt(move _211) -> [0: bb111, otherwise: bb110];
++         _211 = const true;
++         nop;
++         goto -> bb110;
+      }
+  
+      bb108: {
+          StorageDead(_208);
+          goto -> bb109;
+      }
+  
+      bb109: {
+          StorageLive(_209);
+          _209 = core::panicking::panic(const "assertion failed: le_result >= 0 && le_result <= 1") -> unwind unreachable;
+      }
+  
+      bb110: {
+          StorageDead(_212);
+          StorageLive(_213);
+          StorageLive(_214);
+          _214 = copy _178;
+-         _213 = Le(move _214, const 1_u8);
+-         switchInt(move _213) -> [0: bb113, otherwise: bb112];
++         _213 = const true;
++         nop;
++         goto -> bb112;
+      }
+  
+      bb111: {
+          StorageDead(_212);
+          goto -> bb114;
+      }
+  
+      bb112: {
+          StorageDead(_214);
+          _210 = const ();
+          StorageDead(_213);
+          StorageDead(_211);
+          StorageDead(_210);
+          StorageLive(_216);
+          StorageLive(_217);
+          StorageLive(_218);
+          _218 = copy _182;
+-         _217 = Ge(move _218, const 0_u8);
+-         switchInt(move _217) -> [0: bb116, otherwise: bb115];
++         _217 = const true;
++         nop;
++         goto -> bb115;
+      }
+  
+      bb113: {
+          StorageDead(_214);
+          goto -> bb114;
+      }
+  
+      bb114: {
+          StorageLive(_215);
+          _215 = core::panicking::panic(const "assertion failed: gt_result >= 0 && gt_result <= 1") -> unwind unreachable;
+      }
+  
+      bb115: {
+          StorageDead(_218);
+          StorageLive(_219);
+          StorageLive(_220);
+          _220 = copy _182;
+-         _219 = Le(move _220, const 1_u8);
+-         switchInt(move _219) -> [0: bb118, otherwise: bb117];
++         _219 = const true;
++         nop;
++         goto -> bb117;
+      }
+  
+      bb116: {
+          StorageDead(_218);
+          goto -> bb119;
+      }
+  
+      bb117: {
+          StorageDead(_220);
+          _216 = const ();
+          StorageDead(_219);
+          StorageDead(_217);
+          StorageDead(_216);
+          StorageLive(_222);
+          StorageLive(_223);
+          StorageLive(_224);
+          _224 = copy _3;
+          StorageLive(_225);
+          _225 = copy _4;
+          _223 = Eq(move _224, move _225);
+          StorageDead(_225);
+          StorageDead(_224);
+          _222 = move _223 as u8 (IntToInt);
+          StorageDead(_223);
+          StorageLive(_226);
+          StorageLive(_227);
+          StorageLive(_228);
+          _228 = copy _3;
+          StorageLive(_229);
+          _229 = copy _4;
+          _227 = Ne(move _228, move _229);
+          StorageDead(_229);
+          StorageDead(_228);
+          _226 = move _227 as u8 (IntToInt);
+          StorageDead(_227);
+          StorageLive(_230);
+          StorageLive(_231);
+          StorageLive(_232);
+          _232 = copy _3;
+          StorageLive(_233);
+          _233 = copy _4;
+          _231 = Lt(move _232, move _233);
+          StorageDead(_233);
+          StorageDead(_232);
+          _230 = move _231 as u8 (IntToInt);
+          StorageDead(_231);
+          StorageLive(_234);
+          StorageLive(_235);
+          StorageLive(_236);
+          _236 = copy _3;
+          StorageLive(_237);
+          _237 = copy _4;
+          _235 = Le(move _236, move _237);
+          StorageDead(_237);
+          StorageDead(_236);
+          _234 = move _235 as u8 (IntToInt);
+          StorageDead(_235);
+          StorageLive(_238);
+          StorageLive(_239);
+          StorageLive(_240);
+          _240 = copy _3;
+          StorageLive(_241);
+          _241 = copy _4;
+          _239 = Gt(move _240, move _241);
+          StorageDead(_241);
+          StorageDead(_240);
+          _238 = move _239 as u8 (IntToInt);
+          StorageDead(_239);
+          StorageLive(_242);
+          StorageLive(_243);
+          StorageLive(_244);
+          _244 = copy _3;
+          StorageLive(_245);
+          _245 = copy _4;
+          _243 = Ge(move _244, move _245);
+          StorageDead(_245);
+          StorageDead(_244);
+          _242 = move _243 as u8 (IntToInt);
+          StorageDead(_243);
+          StorageLive(_246);
+          StorageLive(_247);
+          StorageLive(_248);
+          _248 = copy _222;
+-         _247 = Ge(move _248, const 0_u8);
+-         switchInt(move _247) -> [0: bb121, otherwise: bb120];
++         _247 = const true;
++         nop;
++         goto -> bb120;
+      }
+  
+      bb118: {
+          StorageDead(_220);
+          goto -> bb119;
+      }
+  
+      bb119: {
+          StorageLive(_221);
+          _221 = core::panicking::panic(const "assertion failed: ge_result >= 0 && ge_result <= 1") -> unwind unreachable;
+      }
+  
+      bb120: {
+          StorageDead(_248);
+          StorageLive(_249);
+          StorageLive(_250);
+          _250 = copy _222;
+-         _249 = Le(move _250, const 1_u8);
+-         switchInt(move _249) -> [0: bb123, otherwise: bb122];
++         _249 = const true;
++         nop;
++         goto -> bb122;
+      }
+  
+      bb121: {
+          StorageDead(_248);
+          goto -> bb124;
+      }
+  
+      bb122: {
+          StorageDead(_250);
+          _246 = const ();
+          StorageDead(_249);
+          StorageDead(_247);
+          StorageDead(_246);
+          StorageLive(_252);
+          StorageLive(_253);
+          StorageLive(_254);
+          _254 = copy _226;
+-         _253 = Ge(move _254, const 0_u8);
+-         switchInt(move _253) -> [0: bb126, otherwise: bb125];
++         _253 = const true;
++         nop;
++         goto -> bb125;
+      }
+  
+      bb123: {
+          StorageDead(_250);
+          goto -> bb124;
+      }
+  
+      bb124: {
+          StorageLive(_251);
+          _251 = core::panicking::panic(const "assertion failed: eq_result >= 0 && eq_result <= 1") -> unwind unreachable;
+      }
+  
+      bb125: {
+          StorageDead(_254);
+          StorageLive(_255);
+          StorageLive(_256);
+          _256 = copy _226;
+-         _255 = Le(move _256, const 1_u8);
+-         switchInt(move _255) -> [0: bb128, otherwise: bb127];
++         _255 = const true;
++         nop;
++         goto -> bb127;
+      }
+  
+      bb126: {
+          StorageDead(_254);
+          goto -> bb129;
+      }
+  
+      bb127: {
+          StorageDead(_256);
+          _252 = const ();
+          StorageDead(_255);
+          StorageDead(_253);
+          StorageDead(_252);
+          StorageLive(_258);
+          StorageLive(_259);
+          StorageLive(_260);
+          _260 = copy _230;
+-         _259 = Ge(move _260, const 0_u8);
+-         switchInt(move _259) -> [0: bb131, otherwise: bb130];
++         _259 = const true;
++         nop;
++         goto -> bb130;
+      }
+  
+      bb128: {
+          StorageDead(_256);
+          goto -> bb129;
+      }
+  
+      bb129: {
+          StorageLive(_257);
+          _257 = core::panicking::panic(const "assertion failed: ne_result >= 0 && ne_result <= 1") -> unwind unreachable;
+      }
+  
+      bb130: {
+          StorageDead(_260);
+          StorageLive(_261);
+          StorageLive(_262);
+          _262 = copy _230;
+-         _261 = Le(move _262, const 1_u8);
+-         switchInt(move _261) -> [0: bb133, otherwise: bb132];
++         _261 = const true;
++         nop;
++         goto -> bb132;
+      }
+  
+      bb131: {
+          StorageDead(_260);
+          goto -> bb134;
+      }
+  
+      bb132: {
+          StorageDead(_262);
+          _258 = const ();
+          StorageDead(_261);
+          StorageDead(_259);
+          StorageDead(_258);
+          StorageLive(_264);
+          StorageLive(_265);
+          StorageLive(_266);
+          _266 = copy _234;
+-         _265 = Ge(move _266, const 0_u8);
+-         switchInt(move _265) -> [0: bb136, otherwise: bb135];
++         _265 = const true;
++         nop;
++         goto -> bb135;
+      }
+  
+      bb133: {
+          StorageDead(_262);
+          goto -> bb134;
+      }
+  
+      bb134: {
+          StorageLive(_263);
+          _263 = core::panicking::panic(const "assertion failed: lt_result >= 0 && lt_result <= 1") -> unwind unreachable;
+      }
+  
+      bb135: {
+          StorageDead(_266);
+          StorageLive(_267);
+          StorageLive(_268);
+          _268 = copy _234;
+-         _267 = Le(move _268, const 1_u8);
+-         switchInt(move _267) -> [0: bb138, otherwise: bb137];
++         _267 = const true;
++         nop;
++         goto -> bb137;
+      }
+  
+      bb136: {
+          StorageDead(_266);
+          goto -> bb139;
+      }
+  
+      bb137: {
+          StorageDead(_268);
+          _264 = const ();
+          StorageDead(_267);
+          StorageDead(_265);
+          StorageDead(_264);
+          StorageLive(_270);
+          StorageLive(_271);
+          StorageLive(_272);
+          _272 = copy _238;
+-         _271 = Ge(move _272, const 0_u8);
+-         switchInt(move _271) -> [0: bb141, otherwise: bb140];
++         _271 = const true;
++         nop;
++         goto -> bb140;
+      }
+  
+      bb138: {
+          StorageDead(_268);
+          goto -> bb139;
+      }
+  
+      bb139: {
+          StorageLive(_269);
+          _269 = core::panicking::panic(const "assertion failed: le_result >= 0 && le_result <= 1") -> unwind unreachable;
+      }
+  
+      bb140: {
+          StorageDead(_272);
+          StorageLive(_273);
+          StorageLive(_274);
+          _274 = copy _238;
+-         _273 = Le(move _274, const 1_u8);
+-         switchInt(move _273) -> [0: bb143, otherwise: bb142];
++         _273 = const true;
++         nop;
++         goto -> bb142;
+      }
+  
+      bb141: {
+          StorageDead(_272);
+          goto -> bb144;
+      }
+  
+      bb142: {
+          StorageDead(_274);
+          _270 = const ();
+          StorageDead(_273);
+          StorageDead(_271);
+          StorageDead(_270);
+          StorageLive(_276);
+          StorageLive(_277);
+          StorageLive(_278);
+          _278 = copy _242;
+-         _277 = Ge(move _278, const 0_u8);
+-         switchInt(move _277) -> [0: bb146, otherwise: bb145];
++         _277 = const true;
++         nop;
++         goto -> bb145;
+      }
+  
+      bb143: {
+          StorageDead(_274);
+          goto -> bb144;
+      }
+  
+      bb144: {
+          StorageLive(_275);
+          _275 = core::panicking::panic(const "assertion failed: gt_result >= 0 && gt_result <= 1") -> unwind unreachable;
+      }
+  
+      bb145: {
+          StorageDead(_278);
+          StorageLive(_279);
+          StorageLive(_280);
+          _280 = copy _242;
+-         _279 = Le(move _280, const 1_u8);
+-         switchInt(move _279) -> [0: bb148, otherwise: bb147];
++         _279 = const true;
++         nop;
++         goto -> bb147;
+      }
+  
+      bb146: {
+          StorageDead(_278);
+          goto -> bb149;
+      }
+  
+      bb147: {
+          StorageDead(_280);
+          _276 = const ();
+          StorageDead(_279);
+          StorageDead(_277);
+          StorageDead(_276);
           _0 = const ();
-          StorageDead(_108);
+          StorageDead(_242);
+          StorageDead(_238);
+          StorageDead(_234);
+          StorageDead(_230);
+          StorageDead(_226);
+          StorageDead(_222);
+          StorageDead(_182);
+          StorageDead(_178);
+          StorageDead(_174);
+          StorageDead(_170);
+          StorageDead(_166);
+          StorageDead(_162);
+          StorageDead(_147);
+          StorageDead(_144);
+          StorageDead(_129);
+          StorageDead(_126);
           StorageDead(_105);
           StorageDead(_102);
           StorageDead(_99);
@@ -930,103 +1968,166 @@
           return;
       }
   
-      bb73: {
-          StorageDead(_133);
-          goto -> bb74;
+      bb148: {
+          StorageDead(_280);
+          goto -> bb149;
       }
   
-      bb74: {
-          StorageLive(_134);
-          _134 = core::panicking::panic(const "assertion failed: shr_result2 >= 0 && shr_result2 <= 1") -> unwind unreachable;
+      bb149: {
+          StorageLive(_281);
+          _281 = core::panicking::panic(const "assertion failed: ge_result >= 0 && ge_result <= 1") -> unwind unreachable;
       }
   }
   
-  ALLOC0 (size: 54, align: 1) {
+  ALLOC0 (size: 50, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
-      0x10 │ 3a 20 73 68 72 5f 72 65 73 75 6c 74 32 20 3e 3d │ : shr_result2 >=
-      0x20 │ 20 30 20 26 26 20 73 68 72 5f 72 65 73 75 6c 74 │  0 && shr_result
-      0x30 │ 32 20 3c 3d 20 31                               │ 2 <= 1
+      0x10 │ 3a 20 67 65 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : ge_result >= 0
+      0x20 │ 20 26 26 20 67 65 5f 72 65 73 75 6c 74 20 3c 3d │  && ge_result <=
+      0x30 │ 20 31                                           │  1
   }
   
-  ALLOC1 (size: 54, align: 1) {
+  ALLOC1 (size: 50, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
-      0x10 │ 3a 20 73 68 6c 5f 72 65 73 75 6c 74 32 20 3e 3d │ : shl_result2 >=
-      0x20 │ 20 30 20 26 26 20 73 68 6c 5f 72 65 73 75 6c 74 │  0 && shl_result
-      0x30 │ 32 20 3c 3d 20 31                               │ 2 <= 1
+      0x10 │ 3a 20 67 74 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : gt_result >= 0
+      0x20 │ 20 26 26 20 67 74 5f 72 65 73 75 6c 74 20 3c 3d │  && gt_result <=
+      0x30 │ 20 31                                           │  1
   }
   
-  ALLOC2 (size: 54, align: 1) {
+  ALLOC2 (size: 50, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 6c 65 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : le_result >= 0
+      0x20 │ 20 26 26 20 6c 65 5f 72 65 73 75 6c 74 20 3c 3d │  && le_result <=
+      0x30 │ 20 31                                           │  1
+  }
+  
+  ALLOC3 (size: 50, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 6c 74 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : lt_result >= 0
+      0x20 │ 20 26 26 20 6c 74 5f 72 65 73 75 6c 74 20 3c 3d │  && lt_result <=
+      0x30 │ 20 31                                           │  1
+  }
+  
+  ALLOC4 (size: 50, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 6e 65 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : ne_result >= 0
+      0x20 │ 20 26 26 20 6e 65 5f 72 65 73 75 6c 74 20 3c 3d │  && ne_result <=
+      0x30 │ 20 31                                           │  1
+  }
+  
+  ALLOC5 (size: 50, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 65 71 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : eq_result >= 0
+      0x20 │ 20 26 26 20 65 71 5f 72 65 73 75 6c 74 20 3c 3d │  && eq_result <=
+      0x30 │ 20 31                                           │  1
+  }
+  
+  ALLOC6 (size: 57, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 73 68 72 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : shr_result >= 
+      0x20 │ 2d 31 32 38 20 26 26 20 73 68 72 5f 72 65 73 75 │ -128 && shr_resu
+      0x30 │ 6c 74 20 3c 3d 20 31 32 37                      │ lt <= 127
+  }
+  
+  ALLOC7 (size: 57, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 73 68 6c 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : shl_result >= 
+      0x20 │ 2d 31 32 38 20 26 26 20 73 68 6c 5f 72 65 73 75 │ -128 && shl_resu
+      0x30 │ 6c 74 20 3c 3d 20 31 32 37                      │ lt <= 127
+  }
+  
+  ALLOC8 (size: 54, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 73 68 72 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : shr_result >= 
       0x20 │ 30 20 26 26 20 73 68 72 5f 72 65 73 75 6c 74 20 │ 0 && shr_result 
       0x30 │ 3c 3d 20 32 35 35                               │ <= 255
   }
   
-  ALLOC3 (size: 54, align: 1) {
+  ALLOC9 (size: 54, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 73 68 6c 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : shl_result >= 
       0x20 │ 30 20 26 26 20 73 68 6c 5f 72 65 73 75 6c 74 20 │ 0 && shl_result 
       0x30 │ 3c 3d 20 32 35 35                               │ <= 255
   }
   
-  ALLOC4 (size: 54, align: 1) {
+  ALLOC10 (size: 57, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 78 6f 72 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : xor_result >= 
+      0x20 │ 2d 31 32 38 20 26 26 20 78 6f 72 5f 72 65 73 75 │ -128 && xor_resu
+      0x30 │ 6c 74 20 3c 3d 20 31 32 37                      │ lt <= 127
+  }
+  
+  ALLOC11 (size: 55, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 6f 72 5f 72 65 73 75 6c 74 20 3e 3d 20 2d │ : or_result >= -
+      0x20 │ 31 32 38 20 26 26 20 6f 72 5f 72 65 73 75 6c 74 │ 128 && or_result
+      0x30 │ 20 3c 3d 20 31 32 37                            │  <= 127
+  }
+  
+  ALLOC12 (size: 57, align: 1) {
+      0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
+      0x10 │ 3a 20 61 6e 64 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : and_result >= 
+      0x20 │ 2d 31 32 38 20 26 26 20 61 6e 64 5f 72 65 73 75 │ -128 && and_resu
+      0x30 │ 6c 74 20 3c 3d 20 31 32 37                      │ lt <= 127
+  }
+  
+  ALLOC13 (size: 54, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 78 6f 72 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : xor_result >= 
       0x20 │ 30 20 26 26 20 78 6f 72 5f 72 65 73 75 6c 74 20 │ 0 && xor_result 
       0x30 │ 3c 3d 20 32 35 35                               │ <= 255
   }
   
-  ALLOC5 (size: 52, align: 1) {
+  ALLOC14 (size: 52, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 6f 72 5f 72 65 73 75 6c 74 20 3e 3d 20 30 │ : or_result >= 0
       0x20 │ 20 26 26 20 6f 72 5f 72 65 73 75 6c 74 20 3c 3d │  && or_result <=
       0x30 │ 20 32 35 35                                     │  255
   }
   
-  ALLOC6 (size: 54, align: 1) {
+  ALLOC15 (size: 54, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 61 6e 64 5f 72 65 73 75 6c 74 20 3e 3d 20 │ : and_result >= 
       0x20 │ 30 20 26 26 20 61 6e 64 5f 72 65 73 75 6c 74 20 │ 0 && and_result 
       0x30 │ 3c 3d 20 32 35 35                               │ <= 255
   }
   
-  ALLOC7 (size: 45, align: 1) {
+  ALLOC16 (size: 45, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 70 72 6f 64 20 3e 3d 20 2d 31 32 38 20 26 │ : prod >= -128 &
       0x20 │ 26 20 70 72 6f 64 20 3c 3d 20 31 32 37          │ & prod <= 127
   }
   
-  ALLOC8 (size: 45, align: 1) {
+  ALLOC17 (size: 45, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 64 69 66 66 20 3e 3d 20 2d 31 32 38 20 26 │ : diff >= -128 &
       0x20 │ 26 20 64 69 66 66 20 3c 3d 20 31 32 37          │ & diff <= 127
   }
   
-  ALLOC9 (size: 43, align: 1) {
+  ALLOC18 (size: 43, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 73 75 6d 20 3e 3d 20 2d 31 32 38 20 26 26 │ : sum >= -128 &&
       0x20 │ 20 73 75 6d 20 3c 3d 20 31 32 37                │  sum <= 127
   }
   
-  ALLOC10 (size: 42, align: 1) {
+  ALLOC19 (size: 42, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 64 69 66 66 20 3e 3d 20 30 20 26 26 20 64 │ : diff >= 0 && d
       0x20 │ 69 66 66 20 3c 3d 20 32 35 35                   │ iff <= 255
   }
   
-  ALLOC11 (size: 42, align: 1) {
+  ALLOC20 (size: 42, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 71 75 6f 74 20 3e 3d 20 30 20 26 26 20 71 │ : quot >= 0 && q
       0x20 │ 75 6f 74 20 3c 3d 20 32 35 35                   │ uot <= 255
   }
   
-  ALLOC12 (size: 42, align: 1) {
+  ALLOC21 (size: 42, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 70 72 6f 64 20 3e 3d 20 30 20 26 26 20 70 │ : prod >= 0 && p
       0x20 │ 72 6f 64 20 3c 3d 20 32 35 35                   │ rod <= 255
   }
   
-  ALLOC13 (size: 40, align: 1) {
+  ALLOC22 (size: 40, align: 1) {
       0x00 │ 61 73 73 65 72 74 69 6f 6e 20 66 61 69 6c 65 64 │ assertion failed
       0x10 │ 3a 20 73 75 6d 20 3e 3d 20 30 20 26 26 20 73 75 │ : sum >= 0 && su
       0x20 │ 6d 20 3c 3d 20 32 35 35                         │ m <= 255
