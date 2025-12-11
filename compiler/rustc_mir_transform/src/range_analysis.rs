@@ -214,7 +214,10 @@ struct SwitchIntRefinement<'tcx> {
 enum PathConstraint {
     // A place compared to a constant that evaluates to a bool
     ConstantBinary { place: PlaceIndex, op: BinOp, constant: ScalarInt },
-    // FIXME: add Unary
+    // The only unary operation that results in a boolean is `!`
+    Unary { place: PlaceIndex, op: UnOp },
+    // Switching directly on a boolean place without a recorded constraint
+    Boolean { place: PlaceIndex },
 }
 
 type PathConstraints = FxHashMap<PlaceIndex, PathConstraint>;
@@ -244,7 +247,7 @@ impl<'tcx> crate::MirPass<'tcx> for RangeAnalysisPass {
 
         // Perform dead code elimination based on range analysis
         let patch = {
-            let mut visitor = Collector::new(tcx, body, &results);
+            let mut visitor = Patcher::new(tcx, body, &results);
             debug_span!("collect").in_scope(|| {
                 visit_reachable_results(body, &results, &mut visitor);
             });
@@ -358,14 +361,17 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
 
         // Check if this place has an associated constraint
         let constraints = self.path_constraints.borrow();
-        let constraint = constraints.get(&discr_place)?;
+        let constraint = if let Some(constraint) = constraints.get(&discr_place) {
+            constraint.clone()
+        } else if ty.is_bool() {
+            PathConstraint::Boolean { place: discr_place }
+        } else {
+            return None;
+        };
 
         // We'll get the actual range later in apply_switch_int_edge_effect
         // when we have access to the state
-        Some(SwitchIntRefinement {
-            discr: discr.clone(),
-            constraint: constraint.clone(),
-        })
+        Some(SwitchIntRefinement { discr: discr.clone(), constraint })
     }
 
     fn apply_switch_int_edge_effect(
@@ -418,12 +424,31 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
                 };
 
                 let refined_range = Self::refine_range(place_range, effective_op, constant);
-
                 if let Some(new_range) = refined_range {
                     state.insert_value_idx(place, RangeLattice::range(new_range), &self.map);
-                    // Propagate refinement to source places
                     self.propagate_refinement_to_source(place, new_range, state);
                 }
+            }
+            PathConstraint::Unary { place, op } => {
+                let current_range = state.get_idx(place, &self.map);
+                let RangeLattice::Range(place_range, _) = current_range else {
+                    return;
+                };
+                if let UnOp::Not = op {
+                    let refined_range =
+                        Self::refine_range(place_range, BinOp::Eq, ScalarInt::FALSE);
+                    if let Some(new_range) = refined_range {
+                        state.insert_value_idx(place, RangeLattice::range(new_range), &self.map);
+                        self.propagate_refinement_to_source(place, new_range, state);
+                    }
+                }
+            }
+            PathConstraint::Boolean { place } => {
+                // Refine the boolean place to true or false based on which branch we're taking
+                let bool_value = if condition_holds { ScalarInt::TRUE } else { ScalarInt::FALSE };
+                let refined_range = Range::singleton(bool_value, false);
+                state.insert_value_idx(place, RangeLattice::range(refined_range), &self.map);
+                self.propagate_refinement_to_source(place, refined_range, state);
             }
         }
     }
@@ -529,11 +554,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
         state: &mut State<RangeLattice>,
     ) {
         // Record the constraint if target is tracked
-        if let Rvalue::BinaryOp(op, box (left, right)) = rvalue {
-            if let Some(place) = self.map.find(target.as_ref()) {
-                self.record_constraint(place, *op, left, right);
-            }
-        }
+        self.record_path_constraint(target, rvalue);
 
         // Handle rvalue
         match rvalue {
@@ -812,21 +833,8 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             TerminatorKind::Drop { place, .. } => {
                 state.flood_with(place.as_ref(), &self.map, RangeLattice::BOTTOM);
             }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
-            }
-            TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::TailCall { .. }
-            | TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
+            TerminatorKind::Yield { .. } => bug!("encountered disallowed terminator"),
+            _ => {
                 // These terminators have no effect on the analysis.
             }
         }
@@ -1250,16 +1258,12 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             Operand::Copy(rhs) | Operand::Move(rhs) => {
                 if let Some(rhs_idx) = self.map.find(rhs.as_ref()) {
                     state.insert_place_idx(place, rhs_idx, &self.map);
-                    // Record that `place` is an alias of `rhs_idx`
-                    // We record the alias relationship so we can propagate refinements later
                     self.aliases.borrow_mut().insert(place, rhs_idx);
                 } else {
-                    // Untracked place => Top.
                     state.insert_value_idx(place, RangeLattice::Top, &self.map);
                 }
             }
             Operand::Constant(box constant) => {
-                // Direct constant assignment.
                 let val = self.handle_constant(constant, state);
                 state.insert_value_idx(place, val, &self.map);
             }
@@ -1402,9 +1406,19 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     }
 
     // When recording the constraint in handle_assign:
-    fn record_constraint(
+    fn record_path_constraint(&self, target: Place<'tcx>, rvalue: &Rvalue<'tcx>) {
+        if let Some(place_idx) = self.map.find(target.as_ref()) {
+            if let Rvalue::BinaryOp(op, box (left, right)) = rvalue {
+                self.record_binary_constraint(place_idx, *op, left, right);
+            } else if let Rvalue::UnaryOp(op, operand) = rvalue {
+                self.record_unary_constraint(place_idx, *op, operand);
+            }
+        }
+    }
+
+    fn record_binary_constraint(
         &self,
-        bool_place: PlaceIndex,
+        target: PlaceIndex,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
@@ -1413,7 +1427,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             if let Some(place_idx) = self.map.find(p.as_ref()) {
                 if let Some(const_val) = c.const_.try_eval_scalar_int(self.tcx, self.typing_env) {
                     self.path_constraints.borrow_mut().insert(
-                        bool_place,
+                        target,
                         PathConstraint::ConstantBinary {
                             place: place_idx,
                             op,
@@ -1427,7 +1441,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 if let Some(const_val) = c.const_.try_eval_scalar_int(self.tcx, self.typing_env) {
                     if let Some(flipped_op) = Self::flip_comparison(op) {
                         self.path_constraints.borrow_mut().insert(
-                            bool_place,
+                            target,
                             PathConstraint::ConstantBinary {
                                 place: place_idx,
                                 op: flipped_op,
@@ -1435,6 +1449,18 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                             },
                         );
                     }
+                }
+            }
+        }
+    }
+
+    fn record_unary_constraint(&self, target: PlaceIndex, op: UnOp, operand: &Operand<'tcx>) {
+        if let UnOp::Not = op {
+            if let Operand::Copy(p) | Operand::Move(p) = operand {
+                if let Some(place_idx) = self.map.find(p.as_ref()) {
+                    self.path_constraints
+                        .borrow_mut()
+                        .insert(target, PathConstraint::Unary { place: place_idx, op });
                 }
             }
         }
@@ -1533,14 +1559,14 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
     }
 }
 
-struct Collector<'a, 'tcx> {
+struct Patcher<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     analysis: &'a RangeAnalysis<'a, 'tcx>,
     patch: MirPatch<'tcx>,
 }
 
-impl<'a, 'tcx> Collector<'a, 'tcx> {
+impl<'a, 'tcx> Patcher<'a, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
@@ -1550,7 +1576,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, 'tcx> {
+impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Patcher<'a, 'tcx> {
     fn visit_after_primary_statement_effect(
         &mut self,
         _analysis: &RangeAnalysis<'a, 'tcx>,
@@ -1559,50 +1585,58 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
         location: Location,
     ) {
         // Check for assignments that can be constant-propagated
-        // FIXME: handle unary operations
         if let StatementKind::Assign(box (place, rvalue)) = &statement.kind {
-            if let Rvalue::BinaryOp(op, box (left, right)) = rvalue {
-                let mut state_mut = state.clone();
-                // FIXME: handle overflows
-                let (result, _) = self.analysis.binary_op(&mut state_mut, *op, left, right);
+            // Check that value is a singleton range
+            let value = {
+                match rvalue {
+                    Rvalue::BinaryOp(op, box (left, right)) => {
+                        let mut state_mut = state.clone();
+                        let (result, _) = self.analysis.binary_op(&mut state_mut, *op, left, right);
+                        result
+                    }
+                    Rvalue::UnaryOp(op, operand) => {
+                        let mut state_mut = state.clone();
+                        let result = self.analysis.unary_op(&mut state_mut, *op, operand);
+                        result
+                    }
+                    _ => return,
+                }
+            };
+            let RangeLattice::Range(range, _) = value else {
+                return;
+            };
+            if !range.is_singleton() {
+                return;
+            }
 
-                // Can only constant-propagate if the range is a singleton
-                let RangeLattice::Range(range, _) = result else {
-                    return;
-                };
-                if range.lo != range.hi {
+            // Check that place is a boolean or integral
+            let ty = place.ty(self.body.local_decls(), self.tcx).ty;
+            let const_val = {
+                if ty.is_bool() {
+                    match range.lo {
+                        ScalarInt::TRUE => Const::from_bool(self.tcx, true),
+                        ScalarInt::FALSE => Const::from_bool(self.tcx, false),
+                        _ => bug!(
+                            "Expected ScalarInt::TRUE or ScalarInt::FALSE, got {:#?}",
+                            range.lo
+                        ),
+                    }
+                } else if ty.is_integral() {
+                    Const::from_scalar(self.tcx, Scalar::Int(range.lo), ty)
+                } else {
                     return;
                 }
+            };
 
-                // Can only constant-propagate bools and integers
-                let ty = place.ty(self.body.local_decls(), self.tcx).ty;
-                let const_val = {
-                    if ty.is_bool() {
-                        match range.lo {
-                            ScalarInt::TRUE => Const::from_bool(self.tcx, true),
-                            ScalarInt::FALSE => Const::from_bool(self.tcx, false),
-                            _ => bug!(
-                                "Expected ScalarInt::TRUE or ScalarInt::FALSE, got {:#?}",
-                                range.lo
-                            ),
-                        }
-                    } else if ty.is_integral() {
-                        Const::from_scalar(self.tcx, Scalar::Int(range.lo), ty)
-                    } else {
-                        return;
-                    }
-                };
+            let const_operand = Operand::Constant(Box::new(ConstOperand {
+                span: statement.source_info.span,
+                const_: const_val,
+                user_ty: None,
+            }));
 
-                let const_operand = Operand::Constant(Box::new(ConstOperand {
-                    span: statement.source_info.span,
-                    const_: const_val,
-                    user_ty: None,
-                }));
-
-                // Replace the statement: nop the old one and add the new one
-                self.patch.nop_statement(location);
-                self.patch.add_assign(location, *place, Rvalue::Use(const_operand));
-            }
+            // Replace the statement by nop'ing the old one and adding the new
+            self.patch.nop_statement(location);
+            self.patch.add_assign(location, *place, Rvalue::Use(const_operand));
         }
     }
 
@@ -1691,10 +1725,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Collector<'a, '
                             },
                         );
                     }
-                } else if matches!(value, RangeLattice::Bottom) {
-                    // FIXME: handle unreachable targets
-                    //dbg!(&discr);
-                    // self.patch.patch_terminator(location.block, TerminatorKind::Unreachable);
                 }
             }
             _ => {}
