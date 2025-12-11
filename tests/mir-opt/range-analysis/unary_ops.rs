@@ -5,7 +5,7 @@ fn test(x: i8, y: i8, x_bool: bool, y_bool: bool) {
     // CHECK-LABEL: fn test(
 
     // Not
-    let x_not = !x_bool as u8; // [0, 1] 
+    let x_not = !x_bool as u8; // [0, 1]
     let y_not = !y_bool as u8; // [0, 1]
     let z = x_not + y_not; // [0, 2]
     assert!(z >= 0 && z <= 2); // True
