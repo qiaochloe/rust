@@ -236,15 +236,15 @@ impl<'tcx> crate::MirPass<'tcx> for RangeAnalysisPass {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        //dbg!(&body.span);
+        // dbg!(&body.span);
         let place_limit = None;
         let map = Map::new(tcx, body, place_limit);
 
         let results = debug_span!("analyze")
             .in_scope(|| RangeAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
-        //dbg!(&results.analysis.map);
-        //dbg!(&results.entry_states);
+        // dbg!(&results.analysis.map);
+        // dbg!(&results.entry_states);
 
         // Perform redundant code elimination
         let patch = {
@@ -262,8 +262,7 @@ impl<'tcx> crate::MirPass<'tcx> for RangeAnalysisPass {
 
     /// If this is `false`, `#[optimize(none)]` will disable the pass.
     fn is_required(&self) -> bool {
-        // FIXME:
-        true
+        false
     }
 }
 
