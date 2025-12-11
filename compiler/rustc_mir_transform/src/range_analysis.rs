@@ -1680,8 +1680,9 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, RangeAnalysis<'a, 'tcx>> for Patcher<'a, 'tc
                             TerminatorKind::Goto { target: *target },
                         );
                     } else {
-                        // Assert always fails, replace with unreachable
-                        self.patch.patch_terminator(location.block, TerminatorKind::Unreachable);
+                        // Even if assert always fails, don't optimize it as unreachable
+                        // because it needs to panic with the correct location for track_caller
+                        // See: tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
                     }
                 }
             }
