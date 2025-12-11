@@ -1,6 +1,7 @@
 //! Range analysis finds lower and upper bounds to the values that variables can assume.
 
 // FIXME:
+// type_range instead of Top where possible
 // char to int conversions
 // handle isize and usize
 
@@ -959,6 +960,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
 
         use UnOp::*;
         match op {
+            // FIXME: better Neg
             Not | Neg => {
                 if range.is_singleton() {
                     to_range(eval(range.lo, op))
@@ -1012,7 +1014,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                         self.arith_op(op, l, r, left_layout, right_layout)
                     }
                     _ => {
-                        // Don't handle AddUnchecked, SubUnchecked, MulUnchecked,ShlUnchecked, ShrUnchecked
+                        // Don't handle AddUnchecked, SubUnchecked, MulUnchecked, ShlUnchecked, ShrUnchecked, Cmp
                         (RangeLattice::Top, RangeLattice::Top)
                     }
                 }
@@ -1107,7 +1109,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 // (l.lo - r.hi, l.hi - r.lo)
                 let lo = eval_base(l.lo, r.hi, Sub);
                 let hi = eval_base(l.hi, r.lo, Sub);
-                if matches!(cmp, RangeRelation::LeftGe) {
+                if matches!(cmp, RangeRelation::LeftGt | RangeRelation::LeftGe) {
                     (to_range_pair(lo, hi), RANGE_FALSE)
                 } else if matches!(cmp, RangeRelation::LeftLt) {
                     (to_range_pair(lo, hi), RANGE_TRUE)
@@ -1147,6 +1149,8 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 (RL::range(Range::new(results[0], results[3], signed)), RANGE_FALSE)
             }
 
+            // FIXME: containing zero is fine, program will crash if actually zero
+            // Same goes for MIN / -1
             Div => {
                 if !signed && r.lo.to_uint(size) == 0 {
                     return (RL::Top, RL::Top);
@@ -1171,8 +1175,32 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
                 (RL::range(Range::new(results[0], results[3], signed)), RL::Top)
             }
 
-            BitAnd | BitOr | BitXor if l.lo == l.hi && r.lo == r.hi => {
-                (to_range(eval_base(l.lo, r.lo, op)), RL::Top)
+            Rem if !signed => {
+                if r.hi.to_uint(size) == 0 {
+                    return (type_range, RL::Top);
+                }
+                let zero = ScalarInt::try_from_uint(0u128, size).unwrap();
+                let max = ScalarInt::try_from_uint(r.hi.to_uint(size) - 1, size).unwrap();
+                (RL::range(Range::new(zero, max, signed)), RL::Top)
+            }
+
+            Rem if signed => {
+                if r.lo.to_int(size) == 0 && r.hi.to_int(size) == 0 || r.lo.to_int(size) == -128 {
+                    return (type_range, RL::Top);
+                }
+                // Containing zero is fine, program will crash if actually zero
+                // Same goes for MIN % -1
+                let zero = ScalarInt::try_from_int(0i128, size).unwrap();
+                let bound = r.lo.to_int(size).abs().max(r.hi.to_int(size).abs()) - 1;
+                let min = ScalarInt::try_from_int(-bound, size).unwrap();
+                let max = ScalarInt::try_from_int(bound, size).unwrap();
+                if l.hi.to_int(size) < 0 {
+                    (RL::range(Range::new(min, zero, out_signed)), RL::Top)
+                } else if l.lo.to_int(size) >= 0 {
+                    (RL::range(Range::new(zero, max, out_signed)), RL::Top)
+                } else {
+                    (RL::range(Range::new(min, max, out_signed)), RL::Top)
+                }
             }
 
             BitAnd if !signed => {
@@ -1248,7 +1276,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             }
 
             Le => {
-                if matches!(cmp, RangeRelation::LeftLe) {
+                if matches!(cmp, RangeRelation::LeftLt | RangeRelation::LeftLe) {
                     (RANGE_TRUE, RL::Top)
                 } else if matches!(cmp, RangeRelation::LeftGt) {
                     (RANGE_FALSE, RL::Top)
@@ -1268,7 +1296,7 @@ impl<'a, 'tcx> RangeAnalysis<'a, 'tcx> {
             }
 
             Ge => {
-                if matches!(cmp, RangeRelation::LeftGe) {
+                if matches!(cmp, RangeRelation::LeftGt | RangeRelation::LeftGe) {
                     (RANGE_TRUE, RL::Top)
                 } else if matches!(cmp, RangeRelation::LeftLt) {
                     (RANGE_FALSE, RL::Top)
