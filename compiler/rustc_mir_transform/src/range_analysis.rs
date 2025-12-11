@@ -216,8 +216,8 @@ enum PathConstraint {
     ConstantBinary { place: PlaceIndex, op: BinOp, constant: ScalarInt },
     // The only unary operation that results in a boolean is `!`
     Unary { place: PlaceIndex, op: UnOp },
-    // Switching directly on a boolean place without a recorded constraint
-    Boolean { place: PlaceIndex },
+    // A place without a recorded constraint
+    Unconstrained { place: PlaceIndex },
 }
 
 type PathConstraints = FxHashMap<PlaceIndex, PathConstraint>;
@@ -363,10 +363,8 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
         let constraints = self.path_constraints.borrow();
         let constraint = if let Some(constraint) = constraints.get(&discr_place) {
             constraint.clone()
-        } else if ty.is_bool() {
-            PathConstraint::Boolean { place: discr_place }
         } else {
-            return None;
+            PathConstraint::Unconstrained { place: discr_place }
         };
 
         // We'll get the actual range later in apply_switch_int_edge_effect
@@ -385,71 +383,106 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
             return;
         }
 
-        // Only proceed if the discriminant is boolean
         let ty = data.discr.ty(self.local_decls, self.tcx);
-        if !ty.is_bool() {
-            return;
-        }
+        if ty.is_bool() {
+            // Determine if we're taking the "true" or "false" branch
+            let cond = match value {
+                SwitchTargetValue::Normal(0) => false,
+                SwitchTargetValue::Otherwise => true,
+                _ => return,
+            };
 
-        // Determine if we're taking the "true" or "false" branch
-        let condition_holds = match value {
-            SwitchTargetValue::Normal(0) => false,
-            SwitchTargetValue::Otherwise => true,
-            _ => return,
-        };
+            match data.constraint {
+                PathConstraint::ConstantBinary { place, op, constant } => {
+                    use BinOp::*;
 
-        match data.constraint {
-            PathConstraint::ConstantBinary { place, op, constant } => {
-                use BinOp::*;
+                    // If condition doesn't hold, negate the operator
+                    let effective_op = if cond {
+                        op
+                    } else {
+                        match op {
+                            Lt => Ge,
+                            Le => Gt,
+                            Gt => Le,
+                            Ge => Lt,
+                            Eq => Ne,
+                            Ne => Eq,
+                            _ => return,
+                        }
+                    };
 
-                // If condition doesn't hold, negate the operator
-                let effective_op = if condition_holds {
-                    op
-                } else {
-                    match op {
-                        Lt => Ge,
-                        Le => Gt,
-                        Gt => Le,
-                        Ge => Lt,
-                        Eq => Ne,
-                        Ne => Eq,
-                        _ => return,
-                    }
-                };
+                    // Get the current range of the place
+                    let current_range = state.get_idx(place, &self.map);
+                    let RangeLattice::Range(place_range, _) = current_range else {
+                        return;
+                    };
 
-                // Get the current range of the place
-                let current_range = state.get_idx(place, &self.map);
-                let RangeLattice::Range(place_range, _) = current_range else {
-                    return;
-                };
-
-                let refined_range = Self::refine_range(place_range, effective_op, constant);
-                if let Some(new_range) = refined_range {
-                    state.insert_value_idx(place, RangeLattice::range(new_range), &self.map);
-                    self.propagate_refinement_to_source(place, new_range, state);
-                }
-            }
-            PathConstraint::Unary { place, op } => {
-                let current_range = state.get_idx(place, &self.map);
-                let RangeLattice::Range(place_range, _) = current_range else {
-                    return;
-                };
-                if let UnOp::Not = op {
-                    let refined_range =
-                        Self::refine_range(place_range, BinOp::Eq, ScalarInt::FALSE);
+                    let refined_range = Self::refine_range(place_range, effective_op, constant);
                     if let Some(new_range) = refined_range {
                         state.insert_value_idx(place, RangeLattice::range(new_range), &self.map);
                         self.propagate_refinement_to_source(place, new_range, state);
                     }
                 }
+                PathConstraint::Unary { place, op } => {
+                    let current_range = state.get_idx(place, &self.map);
+                    let RangeLattice::Range(place_range, _) = current_range else {
+                        return;
+                    };
+                    if let UnOp::Not = op {
+                        let refined_range =
+                            Self::refine_range(place_range, BinOp::Eq, ScalarInt::FALSE);
+                        if let Some(new_range) = refined_range {
+                            state.insert_value_idx(
+                                place,
+                                RangeLattice::range(new_range),
+                                &self.map,
+                            );
+                            self.propagate_refinement_to_source(place, new_range, state);
+                        }
+                    }
+                }
+                PathConstraint::Unconstrained { place } => {
+                    // Refine the place based on which branch we're taking
+                    let bool_value = if cond { ScalarInt::TRUE } else { ScalarInt::FALSE };
+                    let refined_range = Range::singleton(bool_value, false);
+                    state.insert_value_idx(place, RangeLattice::range(refined_range), &self.map);
+                    self.propagate_refinement_to_source(place, refined_range, state);
+                }
             }
-            PathConstraint::Boolean { place } => {
-                // Refine the boolean place to true or false based on which branch we're taking
-                let bool_value = if condition_holds { ScalarInt::TRUE } else { ScalarInt::FALSE };
-                let refined_range = Range::singleton(bool_value, false);
-                state.insert_value_idx(place, RangeLattice::range(refined_range), &self.map);
-                self.propagate_refinement_to_source(place, refined_range, state);
+        } else if ty.is_integral() {
+            let matched_value = match value {
+                SwitchTargetValue::Normal(n) => n,
+                SwitchTargetValue::Otherwise => {
+                    // Can't refine on the catch-all branch
+                    return;
+                }
+            };
+
+            let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
+                return;
+            };
+            let size = layout.size;
+            let signed = ty.is_signed();
+
+            let constant = if signed {
+                ScalarInt::try_from_int(matched_value as i128, size).unwrap()
+            } else {
+                ScalarInt::try_from_uint(matched_value, size).unwrap()
+            };
+
+            match data.constraint {
+                PathConstraint::Unconstrained { place } => {
+                    let refined_range = Range::singleton(constant, signed);
+                    state.insert_value_idx(place, RangeLattice::range(refined_range), &self.map);
+                    self.propagate_refinement_to_source(place, refined_range, state);
+                }
+                _ => {
+                    // For other constraint types on integrals, we could potentially handle them,
+                    // but for now we only handle Unconstrained
+                }
             }
+        } else {
+            bug!("Invalid type for switch int edge effect: {}", ty);
         }
     }
 }
