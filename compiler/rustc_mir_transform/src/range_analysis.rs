@@ -464,9 +464,14 @@ impl<'tcx> Analysis<'tcx> for RangeAnalysis<'_, 'tcx> {
             let signed = ty.is_signed();
 
             let constant = if signed {
-                ScalarInt::try_from_int(matched_value as i128, size).unwrap()
+                ScalarInt::try_from_int(matched_value as i128, size)
             } else {
-                ScalarInt::try_from_uint(matched_value, size).unwrap()
+                ScalarInt::try_from_uint(matched_value, size)
+            };
+
+            let Some(constant) = constant else {
+                // If the value doesn't fit in the type size, we can't refine
+                return;
             };
 
             match data.constraint {
