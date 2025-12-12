@@ -47,3 +47,6 @@
 	path = src/gcc
 	url = https://github.com/rust-lang/gcc.git
 	shallow = true
+[submodule "evaluation/fuzzing"]
+	path = evaluation/fuzzing
+	url = https://github.com/alex-j-wang/fuzzing.git
